@@ -519,59 +519,47 @@ function getExamConfigWithDB(effectivePosition) {
     scorePerQuestion
   };
 
+  // 其他岗位统一题量配置：单选30道(1分) + 多选20道(2分) + 判断15道(2分) = 65题 / 100分
+  const TOTAL_SINGLE = 30;
+  const TOTAL_MULTIPLE = 20;
+  const TOTAL_JUDGE = 15;
+  const numSubjects = configuredSubjects.length;
+
+  // 将总题量均匀分配到各科目
+  const baseSingle = Math.floor(TOTAL_SINGLE / numSubjects);
+  const baseMultiple = Math.floor(TOTAL_MULTIPLE / numSubjects);
+  const baseJudge = Math.floor(TOTAL_JUDGE / numSubjects);
+  let remSingle = TOTAL_SINGLE - baseSingle * numSubjects;
+  let remMultiple = TOTAL_MULTIPLE - baseMultiple * numSubjects;
+  let remJudge = TOTAL_JUDGE - baseJudge * numSubjects;
+
   for (const subj of configuredSubjects) {
-    if (baseConfig && baseConfig.subjects[subj]) {
-      // 硬编码科目：直接使用预配置的题型数量
-      filteredConfig.subjects[subj] = { ...baseConfig.subjects[subj] };
-    } else {
-      // 自定义科目（如"检测员"）：按该方法，使用关键岗位标准题量，而非全部180题
-      const typeCounts = {};
-      for (const typeName of ['单选题', '多选题', '判断题']) {
-        const count = db.prepare('SELECT COUNT(*) as c FROM questions WHERE subject = ? AND type = ?').get(subj, typeName).c;
-        typeCounts[typeName] = count;
-      }
+    // 查数据库可用题量
+    const dbSingle = db.prepare("SELECT COUNT(*) as c FROM questions WHERE subject = ? AND type = '单选题'").get(subj).c;
+    const dbMultiple = db.prepare("SELECT COUNT(*) as c FROM questions WHERE subject = ? AND type = '多选题'").get(subj).c;
+    const dbJudge = db.prepare("SELECT COUNT(*) as c FROM questions WHERE subject = ? AND type = '判断题'").get(subj).c;
 
-      const dbAvailable = {
-        single: typeCounts['单选题'] || 0,
-        multiple: typeCounts['多选题'] || 0,
-        judge: typeCounts['判断题'] || 0
-      };
-      const totalAvailable = dbAvailable.single + dbAvailable.multiple + dbAvailable.judge;
-      if (totalAvailable === 0) continue;
+    let singleCount = baseSingle + (remSingle > 0 ? 1 : 0);
+    let multipleCount = baseMultiple + (remMultiple > 0 ? 1 : 0);
+    let judgeCount = baseJudge + (remJudge > 0 ? 1 : 0);
+    if (remSingle > 0) remSingle--;
+    if (remMultiple > 0) remMultiple--;
+    if (remJudge > 0) remJudge--;
 
-      // 如果有 baseConfig（关键岗位），聚合各科目的题量作为标准配置
-      let singleCount, multipleCount, judgeCount;
-      if (baseConfig && baseConfig.subjects) {
-        // 聚合所有科目的题型总数，作为该自定义科目的标准题量
-        singleCount = 0;
-        multipleCount = 0;
-        judgeCount = 0;
-        for (const counts of Object.values(baseConfig.subjects)) {
-          singleCount += (counts.single || 0);
-          multipleCount += (counts.multiple || 0);
-          judgeCount += (counts.judge || 0);
-        }
-        // 如果题库不够标准题量，则取实际最大可用题量（不低于一定比例）
-        singleCount = Math.min(singleCount, dbAvailable.single);
-        multipleCount = Math.min(multipleCount, dbAvailable.multiple);
-        judgeCount = Math.min(judgeCount, dbAvailable.judge);
-      } else {
-        // 没有 baseConfig：全部使用（保留向后兼容）
-        singleCount = dbAvailable.single;
-        multipleCount = dbAvailable.multiple;
-        judgeCount = dbAvailable.judge;
-      }
+    // 不超过数据库实际题量
+    singleCount = Math.min(singleCount, dbSingle);
+    multipleCount = Math.min(multipleCount, dbMultiple);
+    judgeCount = Math.min(judgeCount, dbJudge);
 
-      const totalScore = singleCount * scorePerQuestion.single + multipleCount * scorePerQuestion.multiple + judgeCount * scorePerQuestion.judge;
+    if (singleCount + multipleCount + judgeCount === 0) continue;
 
-      filteredConfig.subjects[subj] = {
-        single: singleCount,
-        multiple: multipleCount,
-        judge: judgeCount,
-        totalQuestions: singleCount + multipleCount + judgeCount,
-        totalScore
-      };
-    }
+    filteredConfig.subjects[subj] = {
+      single: singleCount,
+      multiple: multipleCount,
+      judge: judgeCount,
+      totalQuestions: singleCount + multipleCount + judgeCount,
+      totalScore: singleCount * scorePerQuestion.single + multipleCount * scorePerQuestion.multiple + judgeCount * scorePerQuestion.judge
+    };
   }
 
   // 如果所有自定义科目都没有题，返回null
