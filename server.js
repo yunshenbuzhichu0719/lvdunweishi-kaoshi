@@ -511,17 +511,47 @@ function getExamConfigWithDB(effectivePosition) {
   const configuredSubjects = posConfig.subjects.split(',').map(s => s.trim());
   const baseConfig = getFirstExamConfig(effectivePosition);
 
+  const scorePerQuestion = baseConfig ? { ...baseConfig.scorePerQuestion } : { single: 1, multiple: 2, judge: 2 };
   const filteredConfig = {
-    examType: baseConfig.examType,
-    duration: baseConfig.duration,
+    examType: baseConfig ? baseConfig.examType : '首次考试',
+    duration: baseConfig ? baseConfig.duration : 90,
     subjects: {},
-    scorePerQuestion: { ...baseConfig.scorePerQuestion }
+    scorePerQuestion
   };
 
   for (const subj of configuredSubjects) {
-    if (baseConfig.subjects[subj]) {
+    if (baseConfig && baseConfig.subjects[subj]) {
+      // 硬编码科目：直接使用预配置的题型数量
       filteredConfig.subjects[subj] = { ...baseConfig.subjects[subj] };
+    } else {
+      // 自定义科目（如"检测员"）：根据数据库实际题量动态生成配置
+      const typeCounts = {};
+      for (const typeName of ['单选题', '多选题', '判断题']) {
+        const count = db.prepare('SELECT COUNT(*) as c FROM questions WHERE subject = ? AND type = ?').get(subj, typeName).c;
+        typeCounts[typeName] = count;
+      }
+      // 每题1分，单选全取，多选和判断全取
+      const singleCount = typeCounts['单选题'] || 0;
+      const multipleCount = typeCounts['多选题'] || 0;
+      const judgeCount = typeCounts['判断题'] || 0;
+      const totalQuestions = singleCount + multipleCount * 2 + judgeCount * 2;
+      const totalScore = singleCount * scorePerQuestion.single + multipleCount * scorePerQuestion.multiple + judgeCount * scorePerQuestion.judge;
+
+      if (totalQuestions === 0) continue;
+
+      filteredConfig.subjects[subj] = {
+        single: singleCount,
+        multiple: multipleCount,
+        judge: judgeCount,
+        totalQuestions,
+        totalScore
+      };
     }
+  }
+
+  // 如果所有自定义科目都没有题，返回null
+  if (Object.keys(filteredConfig.subjects).length === 0) {
+    return null;
   }
 
   return filteredConfig;
@@ -553,10 +583,12 @@ app.get('/api/exam/config', requireAuth, (req, res) => {
 
   // 检查题库是否充足
   const availability = {};
+  const typeMap = { single: '单选题', multiple: '多选题', judge: '判断题' };
   for (const [subject, counts] of Object.entries(config.subjects)) {
     availability[subject] = {};
     for (const [typeName, count] of Object.entries(counts)) {
-      const dbType = typeName === 'single' ? '单选题' : typeName === 'multiple' ? '多选题' : '判断题';
+      const dbType = typeMap[typeName];
+      if (!dbType) continue; // 跳过 totalQuestions, totalScore 等非题型字段
       let query = 'SELECT COUNT(*) as count FROM questions WHERE subject = ? AND type = ?';
       const params = [subject, dbType];
       if (subject === 'D') {
@@ -646,7 +678,8 @@ app.post('/api/exam/start', requireAuth, (req, res) => {
 
   for (const [subject, counts] of Object.entries(config.subjects)) {
     for (const [typeKey, count] of Object.entries(counts)) {
-      const dbType = typeKey === 'single' ? '单选题' : typeKey === 'multiple' ? '多选题' : '判断题';
+      const dbType = typeKey === 'single' ? '单选题' : typeKey === 'multiple' ? '多选题' : typeKey === 'judge' ? '判断题' : null;
+      if (!dbType) continue; // 跳过 totalQuestions, totalScore 等非题型字段
       const scorePerQ = config.scorePerQuestion[typeKey];
 
       let query = 'SELECT * FROM questions WHERE subject = ? AND type = ?';
