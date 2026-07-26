@@ -524,26 +524,51 @@ function getExamConfigWithDB(effectivePosition) {
       // 硬编码科目：直接使用预配置的题型数量
       filteredConfig.subjects[subj] = { ...baseConfig.subjects[subj] };
     } else {
-      // 自定义科目（如"检测员"）：根据数据库实际题量动态生成配置
+      // 自定义科目（如"检测员"）：按该方法，使用关键岗位标准题量，而非全部180题
       const typeCounts = {};
       for (const typeName of ['单选题', '多选题', '判断题']) {
         const count = db.prepare('SELECT COUNT(*) as c FROM questions WHERE subject = ? AND type = ?').get(subj, typeName).c;
         typeCounts[typeName] = count;
       }
-      // 每题1分，单选全取，多选和判断全取
-      const singleCount = typeCounts['单选题'] || 0;
-      const multipleCount = typeCounts['多选题'] || 0;
-      const judgeCount = typeCounts['判断题'] || 0;
-      const totalQuestions = singleCount + multipleCount * 2 + judgeCount * 2;
-      const totalScore = singleCount * scorePerQuestion.single + multipleCount * scorePerQuestion.multiple + judgeCount * scorePerQuestion.judge;
 
-      if (totalQuestions === 0) continue;
+      const dbAvailable = {
+        single: typeCounts['单选题'] || 0,
+        multiple: typeCounts['多选题'] || 0,
+        judge: typeCounts['判断题'] || 0
+      };
+      const totalAvailable = dbAvailable.single + dbAvailable.multiple + dbAvailable.judge;
+      if (totalAvailable === 0) continue;
+
+      // 如果有 baseConfig（关键岗位），聚合各科目的题量作为标准配置
+      let singleCount, multipleCount, judgeCount;
+      if (baseConfig && baseConfig.subjects) {
+        // 聚合所有科目的题型总数，作为该自定义科目的标准题量
+        singleCount = 0;
+        multipleCount = 0;
+        judgeCount = 0;
+        for (const counts of Object.values(baseConfig.subjects)) {
+          singleCount += (counts.single || 0);
+          multipleCount += (counts.multiple || 0);
+          judgeCount += (counts.judge || 0);
+        }
+        // 如果题库不够标准题量，则取实际最大可用题量（不低于一定比例）
+        singleCount = Math.min(singleCount, dbAvailable.single);
+        multipleCount = Math.min(multipleCount, dbAvailable.multiple);
+        judgeCount = Math.min(judgeCount, dbAvailable.judge);
+      } else {
+        // 没有 baseConfig：全部使用（保留向后兼容）
+        singleCount = dbAvailable.single;
+        multipleCount = dbAvailable.multiple;
+        judgeCount = dbAvailable.judge;
+      }
+
+      const totalScore = singleCount * scorePerQuestion.single + multipleCount * scorePerQuestion.multiple + judgeCount * scorePerQuestion.judge;
 
       filteredConfig.subjects[subj] = {
         single: singleCount,
         multiple: multipleCount,
         judge: judgeCount,
-        totalQuestions,
+        totalQuestions: singleCount + multipleCount + judgeCount,
         totalScore
       };
     }
@@ -671,10 +696,101 @@ app.post('/api/exam/start', requireAuth, (req, res) => {
     return res.status(400).json({ error: '您有一场正在进行的考试，请先完成', examId: ongoing.id });
   }
 
-  // 随机抽取题目
+  // 随机抽取题目（带 domain 分散和知识点去重）
   const examQuestions = [];
   let orderNum = 0;
   const errors = [];
+
+  // 辅助函数：按domain分散选题，避免同一知识点出多题
+  function selectQuestionsWithDedup(allQuestions, count, type) {
+    if (allQuestions.length <= count) return allQuestions;
+
+    // 按 domain 分组
+    const domainGroups = {};
+    for (const q of allQuestions) {
+      const domain = q.domain || '未分类';
+      if (!domainGroups[domain]) domainGroups[domain] = [];
+      domainGroups[domain].push(q);
+    }
+
+    const domains = Object.keys(domainGroups);
+    if (domains.length <= 1) {
+      // 只有一个domain，简单随机
+      const shuffled = [...allQuestions].sort(() => Math.random() - 0.5);
+      return shuffled.slice(0, count);
+    }
+
+    // 按domain内的题目去重（取题干前12字符做相似度key）
+    const dedupedGroups = {};
+    for (const [domain, qs] of Object.entries(domainGroups)) {
+      const seen = new Set();
+      const deduped = [];
+      // 先打乱
+      const shuffled = [...qs].sort(() => Math.random() - 0.5);
+      for (const q of shuffled) {
+        const key = q.content.replace(/\s+/g, '').substring(0, 12);
+        if (!seen.has(key)) {
+          seen.add(key);
+          deduped.push(q);
+        } else if (deduped.length < count) {
+          // 如果已经去重过但还是不够，允许重复key加入
+          deduped.push(q);
+        }
+      }
+      dedupedGroups[domain] = deduped;
+    }
+
+    // 按比例分配到各domain
+    const selected = [];
+    const domainList = Object.keys(dedupedGroups);
+    // 基本配额：每个domain至少 ceil(count/domains) 题，但不超过该domain的实际数量
+    const basePerDomain = Math.max(1, Math.ceil(count / domainList.length));
+
+    // 收集每个domain贡献的题目
+    const contributions = [];
+    let remaining = count;
+    const domainQuotas = [];
+
+    // 先分配基础配额
+    for (const domain of domainList) {
+      const available = dedupedGroups[domain];
+      const quota = Math.min(basePerDomain, available.length, remaining);
+      domainQuotas.push({ domain, quota, available });
+      remaining -= quota;
+    }
+
+    // 如果还有剩余名额，从题目多的domain多分配
+    if (remaining > 0) {
+      domainQuotas.sort((a, b) => b.available.length - a.available.length);
+      for (const dq of domainQuotas) {
+        if (remaining <= 0) break;
+        const extra = Math.min(remaining, dq.available.length - dq.quota);
+        dq.quota += extra;
+        remaining -= extra;
+      }
+    }
+
+    // 按配额取题
+    for (const dq of domainQuotas) {
+      for (let i = 0; i < dq.quota && i < dq.available.length; i++) {
+        selected.push(dq.available[i]);
+      }
+    }
+
+    // 确保达到目标题量
+    if (selected.length < count) {
+      const selectedIds = new Set(selected.map(q => q.id));
+      for (const q of allQuestions.sort(() => Math.random() - 0.5)) {
+        if (selected.length >= count) break;
+        if (!selectedIds.has(q.id)) {
+          selected.push(q);
+          selectedIds.add(q.id);
+        }
+      }
+    }
+
+    return selected.slice(0, count);
+  }
 
   for (const [subject, counts] of Object.entries(config.subjects)) {
     for (const [typeKey, count] of Object.entries(counts)) {
@@ -694,16 +810,20 @@ app.post('/api/exam/start', requireAuth, (req, res) => {
         }
       }
 
-      query += ' ORDER BY RANDOM() LIMIT ?';
-      params.push(count);
+      // 先取所有符合条件题目，再智能选择
+      const allQuestions = db.prepare(query).all(...params);
 
-      const questions = db.prepare(query).all(...params);
-
-      if (questions.length < count) {
-        errors.push(`科目${subject} ${dbType}: 需要${count}道，题库仅有${questions.length}道`);
+      if (allQuestions.length < count) {
+        errors.push(`科目${subject} ${dbType}: 需要${count}道，题库仅有${allQuestions.length}道`);
       }
 
-      for (const q of questions) {
+      // 自定义科目（非A/B/C/D）使用domain分散选题；标准科目随机
+      const isStandardSubject = ['A', 'B', 'C', 'D'].includes(subject);
+      const selected = isStandardSubject
+        ? allQuestions.sort(() => Math.random() - 0.5).slice(0, count)
+        : selectQuestionsWithDedup(allQuestions, count, dbType);
+
+      for (const q of selected) {
         orderNum++;
         examQuestions.push({
           question_id: q.id,
