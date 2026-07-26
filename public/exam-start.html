@@ -101,45 +101,94 @@
       box-shadow: 0 8px 24px rgba(0,0,0,0.12);
       border-color: var(--primary);
     }
-    .feature-card .card-icon {
-      font-size: 44px;
-      margin-bottom: 16px;
-    }
-    .feature-card h3 {
-      font-size: 17px;
-      font-weight: 700;
-      color: var(--text);
-      margin-bottom: 8px;
-    }
-    .feature-card p {
-      font-size: 13px;
-      color: var(--text-light);
-      line-height: 1.5;
-      margin: 0;
-    }
-    .feature-card.disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-    .feature-card.disabled:hover {
-      transform: none;
-      border-color: transparent;
-    }
-    .feature-card .soon-badge {
-      position: absolute;
-      top: 12px;
-      right: -30px;
-      background: var(--warning);
-      color: white;
-      font-size: 11px;
-      font-weight: 600;
-      padding: 3px 30px;
-      transform: rotate(45deg);
-    }
+    .feature-card .card-icon { font-size: 44px; margin-bottom: 16px; }
+    .feature-card h3 { font-size: 17px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+    .feature-card p { font-size: 13px; color: var(--text-light); line-height: 1.5; margin: 0; }
 
     /* 考试区域 */
     .exam-area { display: none; }
     .exam-area.show { display: block; }
+
+    /* 模块切换 Tab */
+    .module-tabs {
+      display: flex;
+      gap: 0;
+      margin-bottom: 20px;
+      background: white;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+    }
+    .module-tab {
+      flex: 1;
+      padding: 18px 24px;
+      text-align: center;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-light);
+      border-bottom: 3px solid transparent;
+      transition: all 0.2s;
+      user-select: none;
+    }
+    .module-tab:hover { background: var(--primary-light); color: var(--primary); }
+    .module-tab.active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+      background: var(--primary-light);
+    }
+    .module-tab .tab-icon { margin-right: 6px; }
+    .module-content { display: none; }
+    .module-content.show { display: block; }
+
+    /* 其他岗位卡片网格 */
+    .position-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 16px;
+    }
+    .position-card {
+      background: white;
+      border: 2px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: center;
+    }
+    .position-card:hover { border-color: var(--primary); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+    .position-card.selected { border-color: var(--primary); background: var(--primary-light); }
+    .position-card .pos-icon { font-size: 40px; margin-bottom: 8px; }
+    .position-card .pos-name { font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+    .position-card .pos-subjects { font-size: 13px; color: var(--text-light); margin-bottom: 8px; }
+    .position-card .pos-count {
+      display: inline-block; padding: 4px 12px; border-radius: 20px;
+      background: var(--primary-light); color: var(--primary);
+      font-size: 13px; font-weight: 600;
+    }
+    .position-card .pos-unavailable {
+      display: inline-block; padding: 4px 12px; border-radius: 20px;
+      background: #FFF3E0; color: #E65100;
+      font-size: 13px; font-weight: 600;
+    }
+    .position-card.unavailable {
+      opacity: 0.5; cursor: not-allowed;
+    }
+    .position-card.unavailable:hover {
+      transform: none; border-color: var(--border); box-shadow: none;
+    }
+
+    /* 其他岗位：选中后显示配置 */
+    .selected-pos-config {
+      background: var(--primary-light);
+      border: 2px solid var(--primary);
+      border-radius: 12px;
+      padding: 20px;
+      margin-top: 16px;
+    }
+    .selected-pos-config h3 {
+      font-size: 18px; color: var(--primary); margin-top: 0; margin-bottom: 12px;
+    }
 
     /* 底部版权 */
     .home-footer {
@@ -148,6 +197,8 @@
       color: var(--text-light);
       font-size: 13px;
     }
+
+    .hidden { display: none !important; }
 
     @media (max-width: 768px) {
       .feature-cards { grid-template-columns: 1fr; }
@@ -159,7 +210,7 @@
 
   <!-- 顶部绿色横幅 -->
   <div class="home-banner">
-    <h1>在线培训考核系统</h1>
+    <h1>在线培训��核系统</h1>
     <p>湖南绿盾卫士检测技术有限公司官方培训平台，支持法律法规、专业知识学习，在线刷题练习与考核评估。</p>
   </div>
 
@@ -191,24 +242,48 @@
 
     <!-- 考试区域（点击考试模式后显示） -->
     <div class="exam-area" id="examArea">
-      <!-- 用户信息卡 -->
-      <div class="card" id="userInfoCard">
-        <div class="flex-between">
-          <div>
-            <h3 id="userNameCard"></h3>
-            <p style="color:var(--text-light); font-size:14px;" id="userInfoDisplay"></p>
-          </div>
-          <div id="effectivePositionDisplay"></div>
+
+      <!-- 模块切换 Tab -->
+      <div class="module-tabs">
+        <div class="module-tab active" id="tab-key" onclick="switchModule('key')">
+          <span class="tab-icon">&#128203;</span>关键岗位人员考试
+        </div>
+        <div class="module-tab" id="tab-other" onclick="switchModule('other')">
+          <span class="tab-icon">&#128188;</span>其他岗位人员考试
         </div>
       </div>
 
-      <!-- 首次考试 -->
-      <div id="firstExamSection"></div>
+      <!-- ============ 模块一：关键岗位人��考试 ============ -->
+      <div class="module-content show" id="module-key">
+        <!-- 用户信息卡 -->
+        <div class="card" id="userInfoCard">
+          <div class="flex-between">
+            <div>
+              <h3 id="userNameCard"></h3>
+              <p style="color:var(--text-light); font-size:14px;" id="userInfoDisplay"></p>
+            </div>
+            <div id="effectivePositionDisplay"></div>
+          </div>
+        </div>
 
-      <!-- 扩领域考试 -->
-      <div id="extendedExamSection" class="hidden"></div>
+        <!-- ��次考试 -->
+        <div id="firstExamSection"></div>
 
-      <!-- 考试历史 -->
+        <!-- 扩领域考试 -->
+        <div id="extendedExamSection" class="hidden"></div>
+      </div>
+
+      <!-- ============ 模块二：其他岗位人员考试 ============ -->
+      <div class="module-content" id="module-other">
+        <div class="card">
+          <div class="card-title">选择考试岗位</div>
+          <p style="color:var(--text-light); font-size:14px; margin-bottom:16px;">每个岗位使用其专属题库组卷，题量题型与关键岗位人员考试一致。</p>
+          <div class="position-grid" id="positionList"></div>
+          <div id="selectedPosConfig"></div>
+        </div>
+      </div>
+
+      <!-- 考试历史（共用） -->
       <div class="card">
         <div class="card-title">考试历史</div>
         <div class="table-wrapper">
@@ -263,8 +338,23 @@
 
   <script>
     let examConfig = null;
+    let otherPositions = null;  // 其他岗位配置
     let pendingExamType = null;
     let pendingCategory = null;
+    let pendingPosition = null;  // 其他岗位考试选中的岗位
+
+    const posIcons = {
+      '监督员': '👮', '设备员': '🔧', '内审员': '🔍',
+      '报告审核员': '📝', '采样员': '🧪', '检测员': '🎯'
+    };
+    const posDescs = {
+      '监督员': '监督检查与合规管理',
+      '设备员': '设备管理与维护',
+      '内审员': '内部审核与管理评审',
+      '报告审核员': '报告审核与质量控制',
+      '采样员': '采样技术与规范',
+      '检测员': '检测技术与操作规范'
+    };
 
     async function init() {
       try {
@@ -293,27 +383,45 @@
           document.getElementById('firstExamSection').innerHTML = '<div class="alert alert-warning">您的账号尚未设置岗位，请联系管理员设置岗位信息后参加考试。</div>';
         }
 
-        // 获取考试配置（预加载，等点击考试模式时渲染）
+        // 获取关键岗位考试配置
         const configRes = await fetch('/api/exam/config');
         examConfig = await configRes.json();
+
+        // 获取其他岗位考试配置
+        const otherRes = await fetch('/api/exam/other-configs');
+        otherPositions = await otherRes.json();
       } catch (err) {
         console.error('Init error:', err);
       }
     }
 
+    // ============ 模块切换 ============
+    function switchModule(mod) {
+      document.querySelectorAll('.module-tab').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.module-content').forEach(el => el.classList.remove('show'));
+      if (mod === 'key') {
+        document.getElementById('tab-key').classList.add('active');
+        document.getElementById('module-key').classList.add('show');
+      } else {
+        document.getElementById('tab-other').classList.add('active');
+        document.getElementById('module-other').classList.add('show');
+      }
+    }
+
+    // ============ 考试区域展开 ============
     function showExamArea() {
       const area = document.getElementById('examArea');
       area.classList.add('show');
-      // 滚动到考试区域
       area.scrollIntoView({ behavior: 'smooth' });
-      // 渲染考试信息
       if (examConfig) {
         renderFirstExam();
         renderExtendedExam();
+        renderOtherPositions();
         loadHistory();
       }
     }
 
+    // ============ 关键岗位模块：首次考试 ============
     function renderFirstExam() {
       if (!examConfig.configs || examConfig.configs.length === 0) {
         document.getElementById('firstExamSection').innerHTML = `<div class="alert alert-warning">${examConfig.message || '暂无可用考试'}</div>`;
@@ -376,6 +484,7 @@
       document.getElementById('firstExamSection').innerHTML = html;
     }
 
+    // ============ 关键岗位模块：扩领域考试 ============
     function renderExtendedExam() {
       if (!examConfig.extendedExamAvailable) {
         document.getElementById('extendedExamSection').classList.add('hidden');
@@ -424,15 +533,97 @@
       document.getElementById('categoryModal').classList.add('show');
     }
 
-    function confirmStart(examType, category) {
+    // ============ 其他岗位模块 ============
+    function renderOtherPositions() {
+      const list = document.getElementById('positionList');
+      const positions = otherPositions ? otherPositions.positions : {};
+
+      if (!positions || Object.keys(positions).length === 0) {
+        list.innerHTML = '<div class="alert alert-warning">暂无其他岗位可用，请确认：<br>1. 管理员已在"岗位科目配置"中为其他岗位设置科目<br>2. 题库中已有对应科目的题目</div>';
+        return;
+      }
+
+      let html = '';
+      for (const [posName, posData] of Object.entries(positions)) {
+        const subjLabels = posData.subjects.length > 0
+          ? posData.subjects.map(s => s === 'A' || s === 'B' || s === 'C' || s === 'D' ? '科目' + s : s).join(' + ')
+          : '未配置科目';
+        const canStart = posData.available && posData.configured;
+
+        html += `<div class="position-card${canStart ? '' : ' unavailable'}" onclick="${canStart ? "selectOtherPosition('" + posName + "')" : ''}" id="pos-${posName}">
+          <div class="pos-icon">${posIcons[posName] || '👤'}</div>
+          <div class="pos-name">${posName}</div>
+          <div class="pos-subjects">${subjLabels}</div>
+          ${!posData.configured
+            ? '<div class="pos-unavailable">未配置科目</div>'
+            : posData.totalQuestions === 0
+              ? '<div class="pos-unavailable">暂无题库</div>'
+              : !posData.available
+                ? '<div class="pos-unavailable">题库不足</div>'
+                : `<div class="pos-count">${posData.totalQuestions} 题 / ${posData.duration}分钟 / ${posData.totalScore}分</div>`
+          }
+        </div>`;
+      }
+      list.innerHTML = html;
+    }
+
+    function selectOtherPosition(posName) {
+      const posData = otherPositions.positions[posName];
+      if (!posData || !posData.available) return;
+
+      // 高亮选中卡片
+      document.querySelectorAll('#module-other .position-card').forEach(el => el.classList.remove('selected'));
+      const card = document.getElementById('pos-' + posName);
+      if (card) card.classList.add('selected');
+
+      // 渲染配置详情
+      let html = `<div class="selected-pos-config">
+        <h3>${posIcons[posName] || ''} ${posName} 考试配置</h3>
+        <div class="flex gap-16" style="flex-wrap:wrap; margin-bottom:16px;">
+          <span class="tag tag-green">时长: ${posData.duration}分钟</span>
+          <span class="tag tag-green">总分: ${posData.totalScore}分</span>
+          <span class="tag tag-green">题量: ${posData.totalQuestions}道</span>
+          <span class="tag tag-green">合格线: 70分</span>
+        </div>`;
+
+      if (posData.subjectCounts) {
+        html += '<div class="subject-breakdown">';
+        for (const [subject, counts] of Object.entries(posData.subjectCounts)) {
+          const total = (counts.single || 0) + (counts.multiple || 0) + (counts.judge || 0);
+          const label = (subject === 'A' || subject === 'B' || subject === 'C' || subject === 'D') ? '科目' + subject : subject;
+          html += `<div class="subject-item">
+            <div class="subject-name">${label}</div>
+            <div class="subject-detail">单选${counts.single || 0} / 多选${counts.multiple || 0} / 判断${counts.judge || 0}</div>
+            <div class="subject-detail">共${total}道</div>
+          </div>`;
+        }
+        html += '</div>';
+      }
+
+      html += `<button class="btn btn-primary" style="margin-top:16px;" onclick="confirmStart('其他岗位考试', null, '${posName}')">开始考试</button></div>`;
+      document.getElementById('selectedPosConfig').innerHTML = html;
+    }
+
+    // ============ 确认开始 ============
+    function confirmStart(examType, category, position) {
       pendingExamType = examType;
       pendingCategory = category || null;
+      pendingPosition = position || null;
       closeModal('categoryModal');
 
-      const cfg = examType === '首次考试' ? examConfig.configs[0] : examConfig.extendedConfig;
+      let cfg;
+      if (examType === '首次考试') {
+        cfg = examConfig.configs[0];
+      } else if (examType === '扩领域考试') {
+        cfg = examConfig.extendedConfig;
+      } else if (examType === '其他岗位考试') {
+        cfg = otherPositions.positions[position];
+      }
+
       document.getElementById('confirmDuration').textContent = cfg.duration;
       document.getElementById('confirmContent').innerHTML = `
         <p>考试类型：<strong>${examType}</strong></p>
+        ${position ? `<p>岗位：<strong>${position}</strong></p>` : ''}
         ${category ? `<p>专业大类：<strong>${category}</strong></p>` : ''}
         <p>考试时长：<strong>${cfg.duration}</strong> 分钟</p>
         <p>题目数量：<strong>${cfg.totalQuestions}</strong> 道</p>
@@ -446,10 +637,14 @@
       document.getElementById('startExamBtn').textContent = '正在生成试卷...';
 
       try {
+        const body = { examType: pendingExamType };
+        if (pendingCategory) body.category = pendingCategory;
+        if (pendingPosition) body.position = pendingPosition;
+
         const res = await fetch('/api/exam/start', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ examType: pendingExamType, category: pendingCategory })
+          body: JSON.stringify(body)
         });
         const data = await res.json();
         if (data.examId) {

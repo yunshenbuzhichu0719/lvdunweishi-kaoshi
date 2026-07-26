@@ -627,10 +627,55 @@ app.get('/api/exam/config', requireAuth, (req, res) => {
   });
 });
 
+// 获取所有其他岗位的考试配置
+app.get('/api/exam/other-configs', requireAuth, (req, res) => {
+  if (req.session.user.role === 'admin') {
+    return res.json({ positions: {} });
+  }
+
+  const otherPositionNames = ['监督员', '设备员', '内审员', '报告审核员', '采样员', '检测员'];
+  const positions = {};
+
+  for (const posName of otherPositionNames) {
+    const config = getExamConfigWithDB(posName);
+    if (!config) continue;
+
+    const posConfig = db.prepare('SELECT subjects FROM position_subjects WHERE position = ?').get(posName);
+    const subjects = posConfig ? posConfig.subjects.split(',').map(s => s.trim()) : [];
+
+    // 检查题库充足性
+    const typeMap = { single: '单选题', multiple: '多选题', judge: '判断题' };
+    let allAvailable = true;
+    let totalQuestions = 0;
+
+    for (const [subject, counts] of Object.entries(config.subjects)) {
+      for (const [typeName, count] of Object.entries(counts)) {
+        const dbType = typeMap[typeName];
+        if (!dbType) continue;
+        const available = db.prepare('SELECT COUNT(*) as c FROM questions WHERE subject = ? AND type = ?').get(subject, dbType).c;
+        if (available < count) allAvailable = false;
+        totalQuestions += count;
+      }
+    }
+
+    positions[posName] = {
+      subjects,
+      configured: subjects.length > 0,
+      duration: config.duration,
+      totalQuestions,
+      totalScore: calculateTotalScore(config),
+      available: allAvailable && totalQuestions > 0,
+      subjectCounts: config.subjects
+    };
+  }
+
+  res.json({ positions });
+});
+
 // 开始考试
 app.post('/api/exam/start', requireAuth, (req, res) => {
   const user = req.session.user;
-  const { examType, category } = req.body;
+  const { examType, category, position: selectedPosition } = req.body;
 
   if (user.role === 'admin') {
     return res.status(403).json({ error: '管理员无需参加考试' });
@@ -658,6 +703,19 @@ app.post('/api/exam/start', requireAuth, (req, res) => {
     config = getExtendedExamConfig();
     if (!category) {
       return res.status(400).json({ error: '请选择专业大类' });
+    }
+  } else if (examType === '其他岗位考试') {
+    if (!selectedPosition) {
+      return res.status(400).json({ error: '请选择岗位' });
+    }
+    const otherPositions = ['监督员', '设备员', '内审员', '报告审核员', '采样员', '检测员'];
+    if (!otherPositions.includes(selectedPosition)) {
+      return res.status(400).json({ error: '无效的岗位选择' });
+    }
+    effectivePosition = selectedPosition;
+    config = getExamConfigWithDB(effectivePosition);
+    if (!config) {
+      return res.status(400).json({ error: '该岗位尚未配置考试科目，请联系管理员在"岗位科目配置"中设置' });
     }
   } else {
     return res.status(400).json({ error: '未知的考试类型' });
