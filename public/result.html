@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>考试结果 - 培训考核系统</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="result-page">
+  <div class="result-card" id="resultCard">
+    <div class="empty-state">
+      <div class="icon">⏳</div>
+      <p>正在加载考试结果...</p>
+    </div>
+  </div>
+
+  <div style="text-align:center; margin-top:20px;">
+    <button class="btn btn-primary" onclick="goHome()" style="margin-right:8px;">返回主页</button>
+    <button class="btn btn-outline" onclick="printPaper()" style="margin-right:8px;">🖨 打印试卷</button>
+    <button class="btn btn-outline" onclick="goBack()" style="margin-right:8px;">返回考试中心</button>
+    <button class="btn btn-outline" onclick="logout()">退出登录</button>
+  </div>
+
+  <script>
+    async function init() {
+      const params = new URLSearchParams(window.location.search);
+      const examId = params.get('id');
+      if (!examId) {
+        window.location.href = '/exam-start.html';
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/exam/${examId}/result`);
+        const data = await res.json();
+        renderResult(data);
+      } catch (err) {
+        document.getElementById('resultCard').innerHTML = '<div class="alert alert-danger">加载失败</div>';
+      }
+    }
+
+    function renderResult(data) {
+      const { exam, questions } = data;
+      const isPass = exam.result === '合格';
+      const correctCount = questions.filter(q => q.is_correct === 1).length;
+      const wrongCount = questions.filter(q => q.is_correct === 0).length;
+      const unansweredCount = questions.filter(q => !q.user_answer).length;
+
+      let html = `
+        <div style="font-size:48px; margin-bottom:8px;">${isPass ? '🎉' : '📋'}</div>
+        <h2 style="color:var(--text);">考试结果</h2>
+        <div class="result-score ${isPass ? 'pass' : 'fail'}">${exam.score}</div>
+        <div style="color:var(--text-light); font-size:14px;">满分 ${exam.total_score} 分 | 合格线 70 分</div>
+        <div class="result-badge ${isPass ? 'pass' : 'fail'}">${exam.result}</div>
+
+        <div class="result-stats">
+          <div class="result-stat">
+            <div class="num" style="color:var(--primary);">${correctCount}</div>
+            <div class="label">答对</div>
+          </div>
+          <div class="result-stat">
+            <div class="num" style="color:var(--danger);">${wrongCount}</div>
+            <div class="label">答错</div>
+          </div>
+          <div class="result-stat">
+            <div class="num" style="color:var(--text-light);">${unansweredCount}</div>
+            <div class="label">未答</div>
+          </div>
+        </div>
+
+        <div style="font-size:13px; color:var(--text-light); margin-bottom:16px;">
+          考试类型：${exam.exam_type} |
+          岗位：${exam.position || '-'} |
+          ${exam.subject_d_category ? '专业大类：' + exam.subject_d_category + ' | ' : ''}
+          切屏次数：${exam.switch_count}
+        </div>
+      `;
+
+      if (exam.submit_reason && exam.submit_reason !== 'manual') {
+        const reasonText = exam.submit_reason === '切屏超过3次自动提交'
+          ? '⚠️ 因切屏超过3次，考试已自动提交'
+          : '⏰ 考试时间到，已自动提交';
+        html += `<div class="alert alert-warning">${reasonText}</div>`;
+      }
+
+      // 答题详情
+      html += '<div style="margin-top:24px; text-align:left;">';
+      html += '<h3 style="font-size:16px; margin-bottom:12px;">答题详情</h3>';
+
+      for (const q of questions) {
+        const userAns = q.user_answer || '未作答';
+        const correctAns = q.correct_answer;
+        const isCorrect = q.is_correct === 1;
+        const isUnanswered = !q.user_answer;
+
+        let statusIcon = isCorrect ? '✅' : (isUnanswered ? '⚪' : '❌');
+        let statusColor = isCorrect ? 'var(--primary)' : (isUnanswered ? 'var(--text-light)' : 'var(--danger)');
+
+        html += `<div style="padding:16px; border:1px solid var(--border); border-radius:8px; margin-bottom:12px; border-left:4px solid ${statusColor};">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <span style="font-size:16px;">${statusIcon}</span>
+            <span style="font-weight:600; font-size:14px;">第${q.order_num}题</span>
+            <span class="tag tag-gray" style="font-size:11px;">科目${q.subject}</span>
+            <span class="tag tag-blue" style="font-size:11px;">${q.type}</span>
+            <span style="font-size:12px; color:var(--text-light); margin-left:auto;">${q.score}分</span>
+          </div>
+          <div style="font-size:14px; line-height:1.8; margin-bottom:8px;">${q.content}</div>
+        `;
+
+        // 选项
+        if (q.type !== '判断题') {
+          const options = [
+            { letter: 'A', text: q.option_a },
+            { letter: 'B', text: q.option_b },
+            { letter: 'C', text: q.option_c },
+            { letter: 'D', text: q.option_d }
+          ].filter(o => o.text);
+
+          for (const opt of options) {
+            const isUserChoice = userAns.includes(opt.letter);
+            const isCorrectChoice = correctAns.includes(opt.letter);
+            let bg = '';
+            if (isCorrectChoice) bg = '#E8F5E9';
+            else if (isUserChoice && !isCorrectChoice) bg = '#FFEBEE';
+
+            html += `<div style="padding:6px 12px; background:${bg}; border-radius:4px; margin-bottom:4px; font-size:13px;">
+              <strong>${opt.letter}.</strong> ${opt.text}
+              ${isCorrectChoice ? ' ✓' : ''}
+              ${isUserChoice && !isCorrectChoice ? ' ✗（你的选择）' : ''}
+              ${isUserChoice && isCorrectChoice ? ' ✓（你的选择）' : ''}
+            </div>`;
+          }
+        } else {
+          html += `<div style="padding:6px 12px; font-size:13px;">
+            <strong>正确答案：</strong>${correctAns === 'A' ? '正确' : '错误'} |
+            <strong>你的答案：</strong>${isUnanswered ? '未作答' : (userAns === 'A' ? '正确' : '错误')}
+          </div>`;
+        }
+
+        if (q.explanation) {
+          html += `<div style="margin-top:8px; padding:8px 12px; background:#F5F5F5; border-radius:4px; font-size:13px; color:var(--text-light);">
+            <strong>解析：</strong>${q.explanation}
+          </div>`;
+        }
+
+        html += '</div>';
+      }
+
+      html += '</div>';
+
+      html += `<div style="margin-top:24px; text-align:center;">
+        <button class="btn btn-primary" onclick="goHome()" style="margin-right:8px;">返回主页</button>
+        <button class="btn btn-outline" onclick="printPaper()" style="margin-right:8px;">🖨 打印试卷</button>
+        <button class="btn btn-outline" onclick="goBack()">返回考试中心</button>
+      </div>`;
+
+      document.getElementById('resultCard').innerHTML = html;
+    }
+
+    function goBack() {
+      window.location.href = '/exam-start.html';
+    }
+
+    function goHome() {
+      window.location.href = '/exam-start.html';
+    }
+
+    function printPaper() {
+      const params = new URLSearchParams(window.location.search);
+      const examId = params.get('id');
+      if (examId) {
+        window.open(`/exam-paper.html?id=${examId}`, '_blank');
+      }
+    }
+
+    function logout() {
+      fetch('/api/logout', { method: 'POST' }).then(() => {
+        window.location.href = '/login.html';
+      });
+    }
+
+    init();
+  </script>
+</body>
+</html>

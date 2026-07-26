@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# SQLite temp files
+data/*.db-shm
+data/*.db-wal
+
+# Temp files
+filelist.json
+filelist.txt
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
+
+# PM2
+pids/
+pm2-*.log

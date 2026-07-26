@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>资料查看 - 培训考核系统</title>
+  <!-- PDF.js (本地) -->
+  <script src="/lib/pdfjs/pdf.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+      background: #525659;
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+    }
+
+    /* 顶部工具栏 */
+    .viewer-toolbar {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 48px;
+      background: #1B7A3D;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      z-index: 100;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+    .viewer-toolbar .title {
+      color: white;
+      font-size: 15px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 60%;
+    }
+    .viewer-toolbar .actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .viewer-toolbar .page-nav {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: white;
+      font-size: 14px;
+    }
+    .viewer-toolbar .page-nav button {
+      background: rgba(255,255,255,0.2);
+      border: none;
+      color: white;
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .viewer-toolbar .page-nav button:hover {
+      background: rgba(255,255,255,0.35);
+    }
+    .viewer-toolbar .page-nav button:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    .viewer-toolbar .btn-close {
+      background: rgba(255,255,255,0.2);
+      border: none;
+      color: white;
+      padding: 6px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .viewer-toolbar .btn-close:hover {
+      background: rgba(255,255,255,0.35);
+    }
+
+    /* PDF 渲染区域 */
+    #pdfContainer {
+      position: absolute;
+      top: 48px;
+      left: 0; right: 0; bottom: 0;
+      overflow-y: auto;
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px 0;
+      gap: 12px;
+    }
+    #pdfContainer canvas {
+      box-shadow: 0 2px 12px rgba(0,0,0,0.4);
+      max-width: 90%;
+    }
+
+    /* 加载提示 */
+    .loading-screen {
+      position: fixed;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      color: white;
+    }
+    .loading-screen .spinner {
+      width: 48px; height: 48px;
+      border: 4px solid rgba(255,255,255,0.2);
+      border-top-color: #43A047;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 16px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* 不支持的文件类型 */
+    .unsupported {
+      position: fixed;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      border-radius: 16px;
+      padding: 40px 50px;
+      text-align: center;
+      max-width: 460px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.3);
+    }
+    .unsupported .icon {
+      font-size: 56px;
+      margin-bottom: 16px;
+    }
+    .unsupported h2 {
+      font-size: 18px;
+      color: #333;
+      margin-bottom: 12px;
+    }
+    .unsupported p {
+      font-size: 14px;
+      color: #666;
+      line-height: 1.6;
+      margin-bottom: 20px;
+    }
+    .unsupported .file-name {
+      font-size: 13px;
+      color: #999;
+      margin-bottom: 16px;
+      word-break: break-all;
+    }
+
+    /* 水印层 */
+    .watermark-layer {
+      position: fixed;
+      top: 48px; left: 0; right: 0; bottom: 0;
+      pointer-events: none;
+      z-index: 50;
+      overflow: hidden;
+    }
+    .watermark-layer .wm-grid {
+      position: absolute;
+      top: -50%; left: -50%;
+      width: 200%; height: 200%;
+      display: flex;
+      flex-wrap: wrap;
+      transform: rotate(-25deg);
+    }
+    .watermark-layer .wm-item {
+      font-size: 14px;
+      color: rgba(255,255,255,0.12);
+      white-space: nowrap;
+      padding: 40px 30px;
+      width: 200px;
+      text-align: center;
+    }
+
+    /* 警告条 */
+    .security-notice {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: rgba(0,0,0,0.7);
+      color: rgba(255,255,255,0.8);
+      font-size: 12px;
+      text-align: center;
+      padding: 6px;
+      z-index: 100;
+    }
+  </style>
+</head>
+<body oncontextmenu="return false" ondragstart="return false" onselectstart="return false">
+
+  <!-- 顶部工具栏 -->
+  <div class="viewer-toolbar">
+    <div class="title" id="docTitle">资料查看</div>
+    <div class="actions">
+      <div class="page-nav" id="pageNav" style="display:none;">
+        <button onclick="prevPage()" id="prevBtn">‹</button>
+        <span id="pageInfo">1 / 1</span>
+        <button onclick="nextPage()" id="nextBtn">›</button>
+      </div>
+      <button class="btn-close" onclick="window.close()">✕ 关闭</button>
+    </div>
+  </div>
+
+  <!-- PDF 渲染容器 -->
+  <div id="pdfContainer"></div>
+
+  <!-- 加载中 -->
+  <div class="loading-screen" id="loadingScreen">
+    <div class="spinner"></div>
+    <p>正在加载文件...</p>
+  </div>
+
+  <!-- 不支持的文件类型 -->
+  <div class="unsupported" id="unsupportedMsg" style="display:none;">
+    <div class="icon" id="unsupIcon">📄</div>
+    <h2>此文件类型不支持在线查看</h2>
+    <p id="unsupText">Word / Excel 文件请使用"下载"功能获取。</p>
+    <div class="file-name" id="unsupFileName"></div>
+    <button class="btn-close" style="background:#1B7A3D;" onclick="window.close()">关闭</button>
+  </div>
+
+  <!-- 水印层 -->
+  <div class="watermark-layer" id="watermarkLayer">
+    <div class="wm-grid" id="wmGrid"></div>
+  </div>
+
+  <!-- 安全提示 -->
+  <div class="security-notice">
+    本资料仅供在线查阅，禁止保存、下载、复制、打印或截屏传播
+  </div>
+
+  <script>
+    let pdfDoc = null;
+    let currentPage = 1;
+    let totalPages = 0;
+    let isRendering = false;
+    let pendingPage = null;
+
+    // PDF.js worker
+    if (window.pdfjsLib) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = '/lib/pdfjs/pdf.worker.min.js';
+    }
+
+    // ===== 禁止键盘快捷键 =====
+    document.addEventListener('keydown', function(e) {
+      // 禁止 Ctrl+S (保存), Ctrl+C (复制), Ctrl+P (打印), Ctrl+Shift+S, Ctrl+A (全选)
+      if (e.ctrlKey || e.metaKey) {
+        const key = e.key.toLowerCase();
+        if (['s', 'c', 'p', 'a', 'u', 'x'].includes(key) || (e.shiftKey && key === 's')) {
+          e.preventDefault();
+          e.stopPropagation();
+          return false;
+        }
+      }
+      // 禁止 F12 (开发者工具), Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+Shift+C
+      if (e.key === 'F12') {
+        e.preventDefault();
+        return false;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey) {
+        const key = e.key.toLowerCase();
+        if (['i', 'j', 'c'].includes(key)) {
+          e.preventDefault();
+          return false;
+        }
+      }
+    }, true);
+
+    // 禁止拖拽
+    document.addEventListener('dragstart', function(e) {
+      e.preventDefault();
+      return false;
+    });
+
+    // 禁止复制（双保险）
+    document.addEventListener('copy', function(e) {
+      e.preventDefault();
+      return false;
+    });
+
+    // 禁止截屏（检测 PrintScreen）
+    document.addEventListener('keyup', function(e) {
+      if (e.key === 'PrintScreen') {
+        navigator.clipboard.writeText('').catch(() => {});
+        alert('禁止截屏！请遵守资料保密规定。');
+      }
+    });
+
+    // ===== 初始化 =====
+    async function init() {
+      const params = new URLSearchParams(window.location.search);
+      const id = params.get('id');
+      if (!id) {
+        showError('参数错误');
+        return;
+      }
+
+      try {
+        // 获取用户信息（用于水印）
+        const userRes = await fetch('/api/me');
+        const userData = await userRes.json();
+        const userName = userData.user ? userData.user.name : '未知用户';
+
+        // 获取资料信息
+        const matRes = await fetch('/api/materials');
+        const matData = await matRes.json();
+        const material = matData.materials.find(m => m.id == id);
+
+        if (!material) {
+          showError('文件不存在');
+          return;
+        }
+
+        document.getElementById('docTitle').textContent = material.title;
+
+        // 生成水印
+        generateWatermark(userName);
+
+        // 判断文件类型
+        const ext = material.filename.split('.').pop().toLowerCase();
+
+        if (ext === 'pdf') {
+          // 使用 PDF.js 渲染
+          await renderPDF(id);
+        } else if (ext === 'doc' || ext === 'docx' || ext === 'xls' || ext === 'xlsx') {
+          // Word/Excel 不支持在线查看
+          showUnsupported(material.filename, ext);
+        } else {
+          showUnsupported(material.filename, ext);
+        }
+      } catch (err) {
+        console.error('Init error:', err);
+        showError('加载失败，请重试');
+      }
+    }
+
+    // ===== PDF 渲染 =====
+    async function renderPDF(id) {
+      try {
+        const loadingTask = pdfjsLib.getDocument({
+          url: `/api/materials/${id}/view`,
+          cMapUrl: '/lib/pdfjs/cmaps/',
+          cMapPacked: true
+        });
+
+        pdfDoc = await loadingTask.promise;
+        totalPages = pdfDoc.numPages;
+        currentPage = 1;
+
+        document.getElementById('loadingScreen').style.display = 'none';
+        document.getElementById('pageNav').style.display = 'flex';
+
+        // 更新页面导航
+        updatePageNav();
+
+        // 渲染所有页面（一次性渲染，用户可滚动查看）
+        const container = document.getElementById('pdfContainer');
+        container.innerHTML = '';
+
+        for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+          const page = await pdfDoc.getPage(pageNum);
+          const viewport = page.getViewport({ scale: 1.5 });
+
+          const canvas = document.createElement('canvas');
+          const context = canvas.getContext('2d');
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+          canvas.dataset.pageNum = pageNum;
+
+          container.appendChild(canvas);
+
+          await page.render({
+            canvasContext: context,
+            viewport: viewport
+          }).promise;
+        }
+
+        // 滚动到第一页
+        container.scrollTop = 0;
+
+        // 监听滚动，更新当前页码
+        container.addEventListener('scroll', function() {
+          const scrollTop = container.scrollTop;
+          const containerHeight = container.clientHeight;
+          const canvases = container.querySelectorAll('canvas');
+          for (let i = 0; i < canvases.length; i++) {
+            const rect = canvases[i].getBoundingClientRect();
+            if (rect.bottom > 60 && rect.top < containerHeight) {
+              currentPage = parseInt(canvases[i].dataset.pageNum);
+              updatePageNav();
+              break;
+            }
+          }
+        });
+
+      } catch (err) {
+        console.error('PDF render error:', err);
+        showError('PDF加载失败，请重试');
+      }
+    }
+
+    function updatePageNav() {
+      document.getElementById('pageInfo').textContent = `${currentPage} / ${totalPages}`;
+      document.getElementById('prevBtn').disabled = currentPage <= 1;
+      document.getElementById('nextBtn').disabled = currentPage >= totalPages;
+    }
+
+    function prevPage() {
+      if (currentPage <= 1) return;
+      currentPage--;
+      scrollToPage(currentPage);
+    }
+
+    function nextPage() {
+      if (currentPage >= totalPages) return;
+      currentPage++;
+      scrollToPage(currentPage);
+    }
+
+    function scrollToPage(pageNum) {
+      const container = document.getElementById('pdfContainer');
+      const canvas = container.querySelector(`canvas[data-page-num="${pageNum}"]`);
+      if (canvas) {
+        container.scrollTop = canvas.offsetTop - 20;
+      }
+      updatePageNav();
+    }
+
+    // ===== 不支持的文件类型 =====
+    function showUnsupported(filename, ext) {
+      document.getElementById('loadingScreen').style.display = 'none';
+      const msg = document.getElementById('unsupportedMsg');
+      const icon = document.getElementById('unsupIcon');
+      const text = document.getElementById('unsupText');
+      const nameEl = document.getElementById('unsupFileName');
+
+      if (ext === 'doc' || ext === 'docx') {
+        icon.textContent = '📄';
+      } else if (ext === 'xls' || ext === 'xlsx') {
+        icon.textContent = '📊';
+      } else {
+        icon.textContent = '📎';
+      }
+
+      text.textContent = '该文件类型不支持在线查看，请返回资料库使用"下载"功能获取文件。';
+      nameEl.textContent = '文件名：' + filename;
+      msg.style.display = 'block';
+    }
+
+    // ===== 水印 =====
+    function generateWatermark(userName) {
+      const wmGrid = document.getElementById('wmGrid');
+      const now = new Date().toLocaleString('zh-CN');
+      const wmText = `${userName}  ${now}`;
+      let html = '';
+      // 生成大量水印
+      for (let i = 0; i < 200; i++) {
+        html += `<div class="wm-item">${wmText}</div>`;
+      }
+      wmGrid.innerHTML = html;
+    }
+
+    // ===== 错误提示 =====
+    function showError(msg) {
+      document.getElementById('loadingScreen').style.display = 'none';
+      document.getElementById('pdfContainer').innerHTML = `
+        <div style="color:white; text-align:center; padding:60px 20px;">
+          <div style="font-size:48px; margin-bottom:16px;">⚠️</div>
+          <p style="font-size:16px;">${msg}</p>
+          <button style="margin-top:20px; padding:8px 24px; background:#1B7A3D; color:white; border:none; border-radius:8px; cursor:pointer;" onclick="window.close()">关闭</button>
+        </div>`;
+    }
+
+    // 启动
+    init();
+  </script>
+</body>
+</html>

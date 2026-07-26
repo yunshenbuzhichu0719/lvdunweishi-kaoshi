@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>考试试卷 - 培训考核系统</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: "Microsoft YaHei", "SimSun", sans-serif;
+      background: #f0f0f0;
+      padding: 20px;
+    }
+    .paper {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      padding: 48px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+    }
+    .paper-header {
+      text-align: center;
+      margin-bottom: 30px;
+      border-bottom: 2px solid #333;
+      padding-bottom: 20px;
+    }
+    .paper-header h1 {
+      font-size: 22px;
+      margin-bottom: 6px;
+    }
+    .paper-header .subtitle {
+      font-size: 14px;
+      color: #555;
+      margin-bottom: 12px;
+    }
+    .paper-info {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      color: #333;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .paper-info span {
+      white-space: nowrap;
+    }
+    .score-box {
+      display: inline-block;
+      border: 2px solid #333;
+      padding: 4px 20px;
+      font-size: 18px;
+      font-weight: bold;
+      margin-top: 8px;
+    }
+    .section-title {
+      font-size: 15px;
+      font-weight: bold;
+      margin: 20px 0 10px;
+      padding: 4px 0;
+      border-bottom: 1px solid #ccc;
+    }
+    .question-item {
+      margin-bottom: 16px;
+      font-size: 13px;
+      line-height: 1.8;
+      page-break-inside: avoid;
+    }
+    .question-num {
+      font-weight: bold;
+      margin-right: 4px;
+    }
+    .question-meta {
+      font-size: 11px;
+      color: #888;
+      margin-bottom: 4px;
+    }
+    .question-options {
+      margin: 6px 0 6px 20px;
+    }
+    .option-line {
+      margin-bottom: 2px;
+    }
+    .user-answer {
+      margin-top: 6px;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      display: inline-block;
+    }
+    .user-answer.correct {
+      background: #E8F5E9;
+      color: #1B7A3D;
+    }
+    .user-answer.wrong {
+      background: #FFEBEE;
+      color: #C62828;
+    }
+    .user-answer.unanswered {
+      background: #FFF3E0;
+      color: #E65100;
+    }
+    .print-bar {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      background: #1B7A3D;
+      padding: 12px 20px;
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      z-index: 100;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    .print-bar button {
+      padding: 8px 24px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .print-bar .btn-print {
+      background: white;
+      color: #1B7A3D;
+    }
+    .print-bar .btn-back {
+      background: transparent;
+      color: white;
+      border: 2px solid white;
+    }
+    .loading {
+      text-align: center;
+      padding: 60px;
+      color: #888;
+    }
+    .footer {
+      margin-top: 30px;
+      padding-top: 16px;
+      border-top: 1px solid #ccc;
+      text-align: center;
+      font-size: 12px;
+      color: #888;
+    }
+    .signature-area {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 40px;
+      font-size: 13px;
+    }
+    .signature-item {
+      text-align: center;
+    }
+    .signature-line {
+      border-bottom: 1px solid #333;
+      width: 160px;
+      margin: 30px auto 4px;
+    }
+
+    @media print {
+      body { background: white; padding: 0; }
+      .paper { box-shadow: none; max-width: none; padding: 20px; }
+      .print-bar { display: none !important; }
+      @page { size: A4; margin: 1.5cm; }
+    }
+  </style>
+</head>
+<body>
+  <div class="print-bar">
+    <button class="btn-print" onclick="window.print()">🖨 打印试卷</button>
+    <button class="btn-back" onclick="history.back()">← 返回</button>
+  </div>
+
+  <div class="paper" id="paperContent">
+    <div class="loading">正在加载试卷...</div>
+  </div>
+
+  <script>
+    async function init() {
+      const params = new URLSearchParams(window.location.search);
+      const examId = params.get('id');
+      if (!examId) {
+        document.getElementById('paperContent').innerHTML = '<div class="loading">缺少考试ID</div>';
+        return;
+      }
+
+      try {
+        // 获取考试结果数据
+        const res = await fetch(`/api/exam/${examId}/result`);
+        const data = await res.json();
+
+        if (data.error) {
+          document.getElementById('paperContent').innerHTML = `<div class="loading">${data.error}</div>`;
+          return;
+        }
+
+        // 获取用户信息
+        const meRes = await fetch('/api/me');
+        const meData = await meRes.json();
+        const userName = meData.user ? meData.user.name : '-';
+
+        renderPaper(data, userName);
+      } catch (err) {
+        document.getElementById('paperContent').innerHTML = '<div class="loading">加载失败</div>';
+      }
+    }
+
+    function renderPaper(data, userName) {
+      const { exam, questions } = data;
+      const correctCount = questions.filter(q => q.is_correct === 1).length;
+      const wrongCount = questions.filter(q => q.is_correct === 0).length;
+      const unansweredCount = questions.filter(q => !q.user_answer).length;
+
+      // 按科目分组
+      const subjects = {};
+      for (const q of questions) {
+        if (!subjects[q.subject]) subjects[q.subject] = [];
+        subjects[q.subject].push(q);
+      }
+
+      const subjectNames = {
+        'A': '科目A（法律法规基础知识）',
+        'B': '科目B（管理体系要求）',
+        'C': '科目C（检验检测专业知识）',
+        'D': '科目D（专业领域知识）'
+      };
+
+      let html = `
+        <div class="paper-header">
+          <h1>湖南绿盾卫士检测技术有限公司</h1>
+          <div class="subtitle">内部培训考核试卷</div>
+          <div class="paper-info">
+            <span>姓名：${userName}</span>
+            <span>岗位：${exam.position || '-'}</span>
+            <span>考试类型：${exam.exam_type}</span>
+            ${exam.subject_d_category ? `<span>专业大类：${exam.subject_d_category}</span>` : ''}
+            <span>日期：${exam.start_time ? new Date(exam.start_time).toLocaleDateString('zh-CN') : '-'}</span>
+          </div>
+          <div class="score-box">${exam.score || 0} 分</div>
+          <div style="font-size:12px; color:#888; margin-top:6px;">
+            满分 ${exam.total_score || 100} 分 | 合格线 70 分 | 结果：${exam.result || '-'} |
+            答对 ${correctCount} 题 | 答错 ${wrongCount} 题 | 未答 ${unansweredCount} 题
+          </div>
+        </div>
+      `;
+
+      // 各科目题目
+      let globalNum = 0;
+      for (const subj of Object.keys(subjects).sort()) {
+        html += `<div class="section-title">${subjectNames[subj] || '科目' + subj}（共${subjects[subj].length}题）</div>`;
+
+        for (const q of subjects[subj]) {
+          globalNum++;
+          const isCorrect = q.is_correct === 1;
+          const isUnanswered = !q.user_answer;
+          let ansClass = isCorrect ? 'correct' : (isUnanswered ? 'unanswered' : 'wrong');
+          let ansText = isUnanswered ? '未作答' : q.user_answer;
+
+          html += `<div class="question-item">
+            <div class="question-meta">
+              <span class="question-num">第 ${globalNum} 题</span>
+              <span style="margin-left:8px;">[${q.type}]</span>
+              <span style="margin-left:8px;">${q.score}分</span>
+            </div>
+            <div class="question-content">${q.content}</div>`;
+
+          // 选项
+          if (q.type !== '判断题') {
+            const options = [
+              { letter: 'A', text: q.option_a },
+              { letter: 'B', text: q.option_b },
+              { letter: 'C', text: q.option_c },
+              { letter: 'D', text: q.option_d }
+            ].filter(o => o.text);
+
+            html += '<div class="question-options">';
+            for (const opt of options) {
+              const isCorrectOpt = q.correct_answer.includes(opt.letter);
+              const isUserOpt = ansText.includes(opt.letter);
+              let mark = '';
+              if (isCorrectOpt) mark = ' ✓';
+              if (isUserOpt && !isCorrectOpt) mark = ' ✗';
+              html += `<div class="option-line"><strong>${opt.letter}.</strong> ${opt.text}${mark}</div>`;
+            }
+            html += '</div>';
+          } else {
+            html += `<div class="question-options">
+              <div class="option-line"><strong>A.</strong> 正确${q.correct_answer === 'A' ? ' ✓' : ''}</div>
+              <div class="option-line"><strong>B.</strong> 错误${q.correct_answer === 'B' ? ' ✓' : ''}</div>
+            </div>`;
+          }
+
+          html += `<div class="user-answer ${ansClass}">
+            你的答案：${ansText}
+            ${!isCorrect ? ` | 正确答案：${q.correct_answer}` : ''}
+          </div>`;
+
+          if (q.explanation) {
+            html += `<div style="margin-top:4px; font-size:12px; color:#666; padding:4px 10px; background:#f9f9f9; border-radius:4px;">
+              <strong>解析：</strong>${q.explanation}
+            </div>`;
+          }
+
+          html += '</div>';
+        }
+      }
+
+      // 签名区
+      html += `
+        <div class="signature-area">
+          <div class="signature-item">
+            <div class="signature-line"></div>
+            <div>考生签名</div>
+          </div>
+          <div class="signature-item">
+            <div class="signature-line"></div>
+            <div>日期</div>
+          </div>
+          <div class="signature-item">
+            <div class="signature-line"></div>
+            <div>审核签名</div>
+          </div>
+        </div>
+        <div class="footer">
+          湖南绿盾卫士检测技术有限公司 · 内部培训考核系统<br>
+          考试ID: ${exam.id} | 考试时间: ${exam.start_time ? new Date(exam.start_time).toLocaleString('zh-CN') : '-'}
+          ${exam.end_time ? ' ~ ' + new Date(exam.end_time).toLocaleString('zh-CN') : ''}
+        </div>
+      `;
+
+      document.getElementById('paperContent').innerHTML = html;
+    }
+
+    init();
+  </script>
+</body>
+</html>
