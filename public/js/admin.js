@@ -767,11 +767,16 @@ async function loadPosSubjects() {
     { name: '采样员', icon: '🧪' },
     { name: '检测员', icon: '🔬' }
   ];
-  const allSubjects = ['A', 'B', 'C', 'D'];
 
   try {
-    const res = await fetch('/api/admin/position-subjects');
-    const data = await res.json();
+    // 动态获取所有可用科目（包括A/B/C/D和自定义科目如"检测员"）
+    const [subjectsRes, configRes] = await Promise.all([
+      fetch('/api/admin/subjects'),
+      fetch('/api/admin/position-subjects')
+    ]);
+    const subjectsData = await subjectsRes.json();
+    const data = await configRes.json();
+    const allSubjects = subjectsData.subjects || ['A', 'B', 'C', 'D'];
     const configs = data.configs || {};
 
     let html = '<div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(340px,1fr)); gap:16px;">';
@@ -782,9 +787,10 @@ async function loadPosSubjects() {
       let checkboxHtml = '';
       for (const subj of allSubjects) {
         const checked = current.includes(subj) ? 'checked' : '';
+        const labelText = ['A','B','C','D'].includes(subj) ? `科目${subj}` : subj;
         checkboxHtml += `<label style="display:inline-flex; align-items:center; gap:4px; padding:8px 16px; border:2px solid var(--border); border-radius:8px; cursor:pointer; font-size:14px; transition:all 0.2s; ${checked ? 'border-color:var(--primary); background:#E8F5E9; font-weight:600;' : ''}" onclick="toggleSubjectChip(this)">
           <input type="checkbox" value="${subj}" ${checked} style="display:none;">
-          <span>科目${subj}</span>
+          <span>${labelText}</span>
         </label>`;
       }
 

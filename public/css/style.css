@@ -551,11 +551,44 @@ table tr:hover td {
   top: 80px;
 }
 
-.question-nav-grid {
+/* ==================== 分题型答题卡 ==================== */
+.question-nav-group {
+  margin-bottom: 16px;
+}
+
+.question-nav-group-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 8px;
+  padding-left: 4px;
+}
+
+.question-nav-group-title .type-indicator {
+  width: 4px;
+  height: 14px;
+  border-radius: 2px;
+}
+
+.question-nav-group-title .type-indicator.single { background: var(--primary); }
+.question-nav-group-title .type-indicator.multiple { background: var(--info); }
+.question-nav-group-title .type-indicator.judge { background: var(--warning); }
+.question-nav-group-title .type-indicator.short { background: var(--accent); }
+.question-nav-group-title .type-indicator.scene { background: var(--danger); }
+
+.question-nav-group-title .type-count {
+  font-size: 12px;
+  color: var(--text-light);
+  font-weight: 400;
+}
+
+.question-nav-grid-group {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  gap: 8px;
-  margin-top: 12px;
+  gap: 6px;
 }
 
 .qnav-item {
@@ -591,6 +624,70 @@ table tr:hover td {
 
 .qnav-item.flagged {
   border-color: var(--warning);
+}
+
+/* 答题卡图例 */
+.nav-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.nav-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-light);
+}
+
+.nav-legend-item span {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+}
+
+.nav-legend-item .legend-answered {
+  background: var(--primary-light);
+  border-color: var(--primary);
+}
+
+.nav-legend-item .legend-current {
+  background: var(--primary);
+  border-color: var(--primary-dark);
+}
+
+/* 剩余时间 */
+.nav-timer-box {
+  margin-top: 16px;
+  padding: 12px;
+  background: linear-gradient(135deg, #FFF8E1 0%, #FFECB3 100%);
+  border-radius: 10px;
+  text-align: center;
+  border: 1px solid #FFE082;
+}
+
+.nav-timer-box .timer-label {
+  font-size: 12px;
+  color: var(--warning);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.nav-timer-box .timer-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--warning);
+  margin-top: 4px;
+  font-family: 'Courier New', monospace;
 }
 
 /* 题目样式 */

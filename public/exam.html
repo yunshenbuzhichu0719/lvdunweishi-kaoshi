@@ -34,14 +34,19 @@
     <!-- 侧边导航 -->
     <div class="exam-sidebar">
       <div class="card">
-        <div class="card-title">答题卡</div>
+        <div class="card-title">答题进度 <span id="totalCountLabel" style="font-size:13px; color:var(--text-light); font-weight:400;">共0题</span></div>
         <div style="font-size:13px; color:var(--text-light); margin-bottom:8px;">
           已答: <span id="answeredCount" style="color:var(--primary); font-weight:700;">0</span> / <span id="totalCount">0</span>
         </div>
-        <div class="question-nav-grid" id="navGrid"></div>
-        <div style="margin-top:16px; font-size:12px; color:var(--text-light);">
-          <div><span style="display:inline-block;width:12px;height:12px;background:var(--primary-light);border:1px solid var(--primary);border-radius:3px;vertical-align:middle;"></span> 已答</div>
-          <div style="margin-top:4px;"><span style="display:inline-block;width:12px;height:12px;background:white;border:1px solid var(--border);border-radius:3px;vertical-align:middle;"></span> 未答</div>
+        <div id="navGrid"></div>
+        <div class="nav-legend">
+          <div class="nav-legend-item"><span></span> 未答</div>
+          <div class="nav-legend-item"><span class="legend-answered"></span> 已答</div>
+          <div class="nav-legend-item"><span class="legend-current"></span> 当前题</div>
+        </div>
+        <div class="nav-timer-box">
+          <div class="timer-label">⏱ 剩余时间</div>
+          <div class="timer-value" id="timerSidebar">90:00</div>
         </div>
         <button class="btn btn-primary btn-block" style="margin-top:16px;" onclick="confirmSubmit()">提交试卷</button>
       </div>

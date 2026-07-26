@@ -1286,6 +1286,13 @@ app.get('/api/admin/codes/:id/usage', requireAdmin, (req, res) => {
 
 // ============ 岗位科目配置 API ============
 
+// 获取所有可用科目列表
+app.get('/api/admin/subjects', requireAdmin, (req, res) => {
+  const rows = db.prepare(`SELECT DISTINCT subject FROM questions ORDER BY subject`).all();
+  const subjects = rows.map(r => r.subject).filter(Boolean);
+  res.json({ subjects });
+});
+
 // 管理员：获取所有岗位的刷题科目配置
 app.get('/api/admin/position-subjects', requireAdmin, (req, res) => {
   const configs = db.prepare('SELECT * FROM position_subjects').all();

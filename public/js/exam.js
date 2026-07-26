@@ -10,12 +10,18 @@ let timeRemaining = 0;
 let switchCount = 0;
 let isSubmitting = false;
 let lastSaveTime = 0;
+let currentQuestionId = null;
 
-const subjectColors = {
-  'A': '#E8F5E9',
-  'B': '#E3F2FD',
-  'C': '#FFF3E0',
-  'D': '#F3E5F5'
+const typeOrder = ['单选题', '多选题', '判断题'];
+const typeLabels = {
+  '单选题': '单选题',
+  '多选题': '多选题',
+  '判断题': '判断题'
+};
+const typeClasses = {
+  '单选题': 'single',
+  '多选题': 'multiple',
+  '判断题': 'judge'
 };
 
 async function init() {
@@ -86,6 +92,7 @@ async function init() {
 
 function renderExam() {
   document.getElementById('totalCount').textContent = examData.totalQuestions;
+  document.getElementById('totalCountLabel').textContent = `共${examData.totalQuestions}题`;
 
   // 渲染题目
   let html = '';
@@ -126,11 +133,19 @@ function renderExam() {
   }
   updateAnsweredCount();
 
+  // 设置第一题为当前题
+  if (examData.questions.length > 0) {
+    updateCurrentQuestion(examData.questions[0].id);
+  }
+
   // 启动计时器
   startTimer();
 
   // 绑定选项点击事件
   bindOptionClicks();
+
+  // 监听滚动，自动更新当前题
+  setupScrollTracking();
 }
 
 function renderOption(qid, letter, text, isJudge, isMultiple) {
@@ -169,7 +184,6 @@ function bindOptionClicks() {
       // 更新UI
       updateQuestionUI(qid);
       updateAnsweredCount();
-      renderNavGrid();
 
       // 自动保存
       autoSave();
@@ -191,6 +205,12 @@ function updateQuestionUI(qid) {
       : currentAns === letter;
     opt.classList.toggle('selected', isSelected);
   });
+
+  // 同步更新答题卡上的已答状态
+  const navItem = document.querySelector(`.qnav-item[data-qid="${qid}"]`);
+  if (navItem) {
+    navItem.classList.toggle('answered', !!currentAns);
+  }
 }
 
 function restoreAnswer(qid, ans) {
@@ -199,19 +219,60 @@ function restoreAnswer(qid, ans) {
 }
 
 function renderNavGrid() {
-  const grid = document.getElementById('navGrid');
-  let html = '';
+  const container = document.getElementById('navGrid');
+  if (!container || !examData) return;
+
+  // 按题型分组
+  const groups = {};
   for (const q of examData.questions) {
-    const answered = answers[q.id] ? 'answered' : '';
-    html += `<div class="qnav-item ${answered}" onclick="scrollToQuestion(${q.id})">${q.order}</div>`;
+    if (!groups[q.type]) groups[q.type] = [];
+    groups[q.type].push(q);
   }
-  grid.innerHTML = html;
+
+  let html = '';
+  for (const typeName of typeOrder) {
+    const questions = groups[typeName];
+    if (!questions || questions.length === 0) continue;
+
+    const typeClass = typeClasses[typeName] || 'single';
+    const label = typeLabels[typeName] || typeName;
+
+    html += `<div class="question-nav-group">
+      <div class="question-nav-group-title">
+        <span class="type-indicator ${typeClass}"></span>
+        <span>${label}</span>
+        <span class="type-count">${questions.length}题</span>
+      </div>
+      <div class="question-nav-grid-group">`;
+
+    for (let i = 0; i < questions.length; i++) {
+      const q = questions[i];
+      const displayNum = i + 1; // 题型内从1开始编号
+      const answered = answers[q.id] ? 'answered' : '';
+      const current = q.id === currentQuestionId ? 'current' : '';
+      html += `<div class="qnav-item ${answered} ${current}" data-qid="${q.id}" onclick="scrollToQuestion(${q.id})">${displayNum}</div>`;
+    }
+
+    html += `</div></div>`;
+  }
+
+  container.innerHTML = html;
+}
+
+function updateCurrentQuestion(qid) {
+  currentQuestionId = qid;
+  // 更新答题卡高亮
+  document.querySelectorAll('.qnav-item').forEach(item => {
+    const itemQid = parseInt(item.dataset.qid);
+    item.classList.toggle('current', itemQid === qid);
+  });
 }
 
 function scrollToQuestion(qid) {
   const block = document.getElementById(`qblock-${qid}`);
   if (block) {
     block.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    updateCurrentQuestion(qid);
   }
 }
 
@@ -231,15 +292,20 @@ function startTimer() {
 
     const minutes = Math.floor(timeRemaining / 60);
     const seconds = timeRemaining % 60;
+    const timeStr = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
     const timerEl = document.getElementById('timer');
+    const timerSidebarEl = document.getElementById('timerSidebar');
 
-    timerEl.textContent = `⏱ ${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    if (timerEl) timerEl.textContent = `⏱ ${timeStr}`;
+    if (timerSidebarEl) timerSidebarEl.textContent = timeStr;
 
     // 颜色变化
     if (timeRemaining <= 300) {
-      timerEl.className = 'exam-timer danger';
+      if (timerEl) timerEl.className = 'exam-timer danger';
+      if (timerSidebarEl) timerSidebarEl.style.color = 'var(--danger)';
     } else if (timeRemaining <= 600) {
-      timerEl.className = 'exam-timer warning';
+      if (timerEl) timerEl.className = 'exam-timer warning';
+      if (timerSidebarEl) timerSidebarEl.style.color = 'var(--warning)';
     }
 
     // 自动交卷
@@ -257,6 +323,40 @@ function startTimer() {
 
   update();
   timerInterval = setInterval(update, 1000);
+}
+
+// ==================== 滚动跟踪当前题 ====================
+function setupScrollTracking() {
+  const panel = document.getElementById('questionsPanel');
+  if (!panel) return;
+
+  let scrollTimeout;
+  panel.addEventListener('scroll', () => {
+    clearTimeout(scrollTimeout);
+    scrollTimeout = setTimeout(() => {
+      const blocks = panel.querySelectorAll('.question-block');
+      let closest = null;
+      let closestDist = Infinity;
+      const panelRect = panel.getBoundingClientRect();
+      const threshold = panelRect.top + 100;
+
+      for (const block of blocks) {
+        const rect = block.getBoundingClientRect();
+        const dist = Math.abs(rect.top - threshold);
+        if (dist < closestDist) {
+          closestDist = dist;
+          closest = block;
+        }
+      }
+
+      if (closest) {
+        const qid = parseInt(closest.id.replace('qblock-', ''));
+        if (qid !== currentQuestionId) {
+          updateCurrentQuestion(qid);
+        }
+      }
+    }, 150);
+  });
 }
 
 // ==================== 自动保存 ====================
