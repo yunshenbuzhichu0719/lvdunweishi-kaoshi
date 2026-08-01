@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>湖南绿盾卫士检测技术有限公司 · 内部培训考核系统</title>
+<link rel="stylesheet" href="assets/app.css">
+</head>
+<body>
+
+<div id="app">
+  <!-- ============ 顶栏 ============ -->
+  <header id="topbar">
+    <div class="tb-left">
+      <div class="logo">
+        <svg viewBox="0 0 32 38" width="26" height="31" aria-hidden="true">
+          <path d="M16 1 L30 6 v14c0 8.5-5.9 14.4-14 17C7.9 34.4 2 28.5 2 20V6z" fill="#0e7a4f"/>
+          <path d="M16 1 L30 6 v14c0 8.5-5.9 14.4-14 17z" fill="#129962"/>
+          <path d="M9.5 19.2 l4.4 4.4 L23 14.4" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div class="tb-title">
+        <div class="t1">湖南绿盾卫士检测技术有限公司</div>
+        <div class="t2">内部培训考核系统</div>
+      </div>
+    </div>
+    <div class="tb-right">
+      <span id="userChip" class="chip hidden"></span>
+      <button class="btn ghost sm hidden" id="btnBack" title="返回">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px"><path d="M15 18l-6-6 6-6"/></svg>返回
+      </button>
+      <button class="btn ghost sm" id="btnHome">首页</button>
+    </div>
+  </header>
+
+  <main id="main"></main>
+
+  <footer id="footer">
+    <span>© 湖南绿盾卫士检测技术有限公司 · 内部培训考核系统</span>
+  </footer>
+</div>
+
+<!-- ============ 全局弹窗 ============ -->
+<div id="modalMask" class="mask hidden">
+  <div class="modal" id="modalBox">
+    <div class="modal-hd" id="modalTitle">提示</div>
+    <div class="modal-bd" id="modalBody"></div>
+    <div class="modal-ft" id="modalFoot"></div>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<script src="assets/xlsx.full.min.js"></script>
+<script src="data/bank-keypost.js"></script>
+<script src="assets/store.js"></script>
+<script src="assets/engine.js"></script>
+<script src="assets/ui.js"></script>
+<script src="assets/admin.js"></script>
+<script src="assets/main.js"></script>
+</body>
+</html>
