@@ -292,9 +292,8 @@
       '<div class="lc-tip">通过注册时设置的密保问题验证身份，即可重置密码。</div>' +
       '</div>' +
 
-      // 切换标签（登录 / 注册 / 忘记密码）置于长条登录按钮正下方
+      // 切换标签（注册 / 忘记密码）置于长条登录按钮正下方
       '<div class="lc-tabs">' +
-      '<button class="lc-tab on" data-tab="login">登录</button>' +
       '<button class="lc-tab" data-tab="reg">注册</button>' +
       '<button class="lc-tab" data-tab="fp">忘记密码</button>' +
       '</div>' +
