@@ -27,6 +27,20 @@ node server.js
 - 后端使用 JSON 文件数据库，默认保存在 `data-store.json`。
 - 定期备份 `data-store.json` 即可保留用户和考试记录。
 
+## 环境变量
+
+| 变量 | 含义 | 默认 |
+|------|------|------|
+| `PORT` | 监听端口 | `3000` |
+| `DATA_FILE` | 数据文件绝对路径 | `./data-store.json` |
+| `ADMIN_PASS` | 首次播种管理员密码 | `ldws2025` |
+| `SECRET` | 会话签名密钥 | `lvdunweishi-cloud-2025` |
+
+### Railway 数据持久化（重要）
+Railway 默认文件系统是临时的，重启会丢数据。在控制台：
+1. Service → **Settings → Volumes → New Volume**，Mount Path 填 `/data`
+2. Variables 加：`DATA_FILE=/data/data-store.json`
+
 ## 部署到公网（分享给朋友）
 
 由于本系统需要 Node 后端，**不能直接用 GitHub Pages / CloudStudio 静态托管**，需要能运行 Node 的服务器。
