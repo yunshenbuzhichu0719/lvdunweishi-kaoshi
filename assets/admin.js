@@ -447,7 +447,7 @@
       $('#abody').innerHTML =
         '<div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:14px;flex-wrap:wrap;gap:10px">' +
         '<div><h3 style="margin:0;font-size:17px">管理员账户</h3>' +
-        '<div class="sub">后台管理员专用账户；支持在后台生成账户并随机生成密码。账户仅保存在本机浏览器。</div></div></div>' +
+        '<div class="sub">后台管理员专用账户；支持在后台新增 / 重置管理员，密码可自定义设置或随机生成。账户仅保存在本机浏览器。</div></div></div>' +
         '<div class="card pad" style="max-width:760px;margin-bottom:16px">' +
         '<div style="font-weight:600;font-size:13.5px;margin-bottom:10px">新增管理员</div>' +
         '<div class="grid g2">' +
@@ -478,13 +478,25 @@
       $$('[data-rst]').forEach(function (e) {
         e.onclick = function () {
           var i = +e.getAttribute('data-rst'); var a = list[i];
-          var np = genPwd(10);
-          ui().confirmBox('重置密码', '确认为管理员 <b>' + esc(a.user) + '</b> 重置密码？新密码：<b>' + np + '</b>', '重置', false)
-            .then(function (v) {
-              if (!v) return;
-              a.pass = L.pwHash(np);
-              L.Bank.admins.save(a).then(function () { ui().toast('密码已重置：' + np, 'ok'); });
-            });
+          var init = genPwd(10);
+          ui().modal({
+            title: '重置密码',
+            lock: true,
+            html:
+              '<div style="margin-bottom:10px">为管理员 <b>' + esc(a.user) + '</b> 设置新密码：</div>' +
+              '<div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">' +
+              '<label class="fld" style="flex:1;min-width:220px;margin:0"><span>新密码</span><input type="text" id="rstPwd" value="' + esc(init) + '" style="font-family:monospace"></label>' +
+              '<button class="btn sm" id="rstGen">生成随机</button></div>' +
+              '<div style="margin-top:8px;font-size:12px;color:var(--ink-400)">可改为自己易记的密码；留空或点「生成随机」则使用随机密码。</div>',
+            buttons: [{ text: '取消', value: false }, { text: '确定重置', primary: true, danger: true, value: true }]
+          }).then(function (v) {
+            if (!v) return;
+            var np = ($('#rstPwd').value || '').trim() || init;
+            a.pass = L.pwHash(np);
+            L.Bank.admins.save(a).then(function () { PAGES.admins(); ui().toast('密码已重置：' + np, 'ok'); });
+          });
+          var g = $('#rstGen');
+          if (g) g.onclick = function () { var el = $('#rstPwd'); if (el) el.value = genPwd(10); };
         };
       });
       $$('[data-del]').forEach(function (e) {
