@@ -1,4 +1,4 @@
-/* 登录 / 注册 / 忘记密码 流程测试（jsdom 加载真实 index.html） */
+/* 登录流程测试（jsdom 加载真实 index.html）：注册 / 忘记密码入口已移除，仅验证登录 */
 const { JSDOM, VirtualConsole } = require('jsdom');
 const path = require('path');
 
@@ -27,22 +27,13 @@ const ok = (c, m) => { console.log((c ? '  ✅ ' : '  ❌ ') + m); if (!c) fail+
 
   ok(/考生登录/.test(txt()), '显示登录界面');
 
-  // 1) 注册
-  doc.querySelector('[data-tab="reg"]').click(); await sleep(40);
-  $('rUser').value = 'alice'; $('rPw').value = 'pw1234'; $('rPw2').value = 'pw1234';
-  $('rName').value = '爱丽丝'; $('rNo').value = 'A01'; $('rDept').value = '监测科';
-  $('rQ').value = doc.querySelector('#rQ option').value; $('rA').value = '北京';
-  $('btnReg').click(); await sleep(300);
-  ok(/日常培训考核/.test(txt()), '注册后自动登录进入首页');
+  // 预置一个考生账号（注册 UI 已移除，改为直接落库）
+  await win.LDWS.Bank.accounts.save({ user: 'alice', pass: win.LDWS.pwHash('pw1234'), name: '爱丽丝', no: 'A01', dept: '监测科' });
   const acc = await win.LDWS.Bank.accounts.get('alice');
   ok(!!acc && acc.name === '爱丽丝', '账号已写入本地存储');
   ok(acc.pass !== 'pw1234', '密码已哈希存储（非明文）');
 
-  // 退出，回到登录页
-  $('btnLogout').click(); await sleep(200);
-  ok(/考生登录/.test(txt()), '退出后回到登录界面');
-
-  // 2) 登录（正确密码）
+  // 1) 登录（正确密码）
   $('lUser').value = 'alice'; $('lPw').value = 'pw1234';
   $('btnLogin').click(); await sleep(300);
   ok(/日常培训考核/.test(txt()), '用正确密码登录成功');
@@ -51,34 +42,10 @@ const ok = (c, m) => { console.log((c ? '  ✅ ' : '  ❌ ') + m); if (!c) fail+
   // 退出
   $('btnLogout').click(); await sleep(200);
 
-  // 3) 错误密码被拒
+  // 2) 错误密码被拒
   $('lUser').value = 'alice'; $('lPw').value = 'wrong';
   $('btnLogin').click(); await sleep(200);
   ok(/账号或密码错误/.test(txt()), '错误密码被拒绝');
-
-  // 4) 忘记密码：密保答案重置
-  doc.querySelector('[data-tab="fp"]').click(); await sleep(40);
-  $('fUser').value = 'alice'; $('btnFp').click(); await sleep(300);
-  ok(/密保问题/.test(txt()), '忘记密码第一步显示密保问题');
-  ok(!$('fpStep2').classList.contains('hidden'), '第二步（答案+新密码）已展开');
-  $('fA').value = '北京'; $('fPw').value = 'new5678'; $('fPw2').value = 'new5678';
-  $('btnFp').click(); await sleep(300);
-  ok(/密码已重置/.test(txt()), '密保答案正确后密码已重置');
-  const acc2 = await win.LDWS.Bank.accounts.get('alice');
-  ok(acc2.pass === win.LDWS.pwHash('new5678'), '新密码已生效');
-
-  // 5) 用新密码登录
-  $('lUser').value = 'alice'; $('lPw').value = 'new5678';
-  $('btnLogin').click(); await sleep(300);
-  ok(/日常培训考核/.test(txt()), '用重置后的新密码成功登录');
-
-  // 6) 忘记密码错误答案被拒
-  $('btnLogout').click(); await sleep(150);
-  doc.querySelector('[data-tab="fp"]').click(); await sleep(40);
-  $('fUser').value = 'alice'; $('btnFp').click(); await sleep(250);
-  $('fA').value = '上海'; $('fPw').value = 'x1'; $('fPw2').value = 'x1';
-  $('btnFp').click(); await sleep(200);
-  ok(/密保答案不正确/.test(txt()), '密保答案错误被拒绝');
 
   ok(errors.length === 0, '无 JS 运行时错误' + (errors.length ? '：' + errors.slice(0, 2).join(' | ') : ''));
 

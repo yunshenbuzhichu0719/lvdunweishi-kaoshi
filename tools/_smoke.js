@@ -36,22 +36,15 @@ const ok = (c, m) => { console.log((c ? '  ✅ ' : '  ❌ ') + m); if (!c) fail+
   const doc = win.document;
   const txt = () => doc.body.textContent;
 
-  // 登录门禁：未登录先显示登录界面（含 注册 / 忘记密码 标签）
+  // 登录门禁：未登录先显示登录界面（注册 / 忘记密码入口已移除）
   ok(/考生登录/.test(txt()), '未登录时显示登录界面');
-  ok(!!doc.querySelector('[data-tab="reg"]'), '登录页含「注册」标签');
-  ok(!!doc.querySelector('[data-tab="fp"]'), '登录页含「忘记密码」标签');
-  // 切换到注册标签并注册一个新账号（自动登录）
-  doc.querySelector('[data-tab="reg"]').click();
-  await sleep(50);
-  doc.getElementById('rUser').value = 'tester01';
-  doc.getElementById('rPw').value = 'abc123';
-  doc.getElementById('rPw2').value = 'abc123';
-  doc.getElementById('rName').value = '测试员';
-  doc.getElementById('rQ').value = doc.querySelector('#rQ option').value;
-  doc.getElementById('rA').value = '答案';
-  doc.getElementById('btnReg').click();
+  // 预置一个考生账号并登录（注册 UI 已移除，改为直接落库）
+  await win.LDWS.Bank.accounts.save({ user: 'tester01', pass: win.LDWS.pwHash('abc123'), name: '测试员' });
+  doc.getElementById('lUser').value = 'tester01';
+  doc.getElementById('lPw').value = 'abc123';
+  doc.getElementById('btnLogin').click();
   await sleep(400);
-  ok(/日常培训考核/.test(txt()) && /关键岗位人员考试/.test(txt()), '注册并自动登录后进入首页');
+  ok(/日常培训考核/.test(txt()) && /关键岗位人员考试/.test(txt()), '登录后进入首页');
   ok(doc.getElementById('btnBack').classList.contains('hidden'), '首页不显示返回按钮（根界面）');
 
   // 内置题库已加载
