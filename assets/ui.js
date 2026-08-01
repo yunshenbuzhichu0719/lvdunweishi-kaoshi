@@ -227,7 +227,7 @@
     function setErr(m) { var e = $('#aErr'); if (e) e.textContent = m || ''; }
     function tryLogin() {
       var user = ($('#aUser').value || '').trim();
-      var pw = $('#aPw').value || '';
+      var pw = ($('#aPw').value || '').trim();
       if (!user) { setErr('请输入管理员用户名'); return; }
       setErr('');
       L.Bank.admins.get(user).then(function (acc) {
