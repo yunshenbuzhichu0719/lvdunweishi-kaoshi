@@ -150,7 +150,8 @@
       });
       return Bank.loadCfg()
         .then(function () {
-          if (!Array.isArray(Bank.cfg.keypost.positions)) {
+          if (!Array.isArray(Bank.cfg.keypost.positions) ||
+              Bank.cfg.keypost.positions.filter(function (p) { return p.combo; }).length < 12) {
             Bank.cfg.keypost.positions = defaultPositions();
             return Bank.saveCfg();
           }
