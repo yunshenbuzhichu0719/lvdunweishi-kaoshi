@@ -1,0 +1,13 @@
+{
+  "name": "lvdunweishi-cloud",
+  "version": "1.0.0",
+  "description": "绿盾卫士培训考核系统·云版（PWA + Node 后端，集中收集考试记录）",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=16"
+  },
+  "private": true
+}

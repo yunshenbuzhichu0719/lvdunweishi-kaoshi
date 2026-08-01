@@ -1,0 +1,15 @@
+{
+  "name": "绿盾卫士培训考核系统（云版）",
+  "short_name": "绿盾卫士",
+  "description": "湖南绿盾卫士检测技术有限公司内部培训考核系统 · 关键岗位考试，记录集中云端",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0e7a4f",
+  "theme_color": "#0e7a4f",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
