@@ -319,12 +319,14 @@
     Object.keys(BASE).forEach(function (k) {
       out.push({ key: k, name: BASE[k].name, focus: BASE[k].focus, note: BASE[k].note, combo: false, enabled: true, plan: clonePlan(BASE[k].plan) });
     });
-    // 兼任组合（依据大纲 4.2.1.5）
-    var COMBOS = [
-      ['top', 'quality', 'quality'], ['top', 'tech', 'tech'], ['top', 'signer', 'signer'],
-      ['quality', 'signer', 'signer'], ['signer', 'tech', 'tech'], ['tech', 'signer', 'signer'],
-      ['quality', 'tech', 'tech'], ['signer', 'quality', 'quality'], ['tech', 'quality', 'quality']
-    ];
+    // 兼任组合（依据大纲 4.2.1.5）：主岗位 a 可兼任任一其他关键岗位 b（a≠b），
+    // 考试按兼任岗位 b 的要求组卷。生成全部 a×b 组合，供界面两个下拉任意搭配。
+    var COMBOS = [];
+    Object.keys(BASE).forEach(function (a) {
+      Object.keys(BASE).forEach(function (b) {
+        if (a !== b) COMBOS.push([a, b, b]);
+      });
+    });
     COMBOS.forEach(function (c) {
       var a = c[0], b = c[1], inh = c[2];
       out.push({

@@ -701,31 +701,26 @@
   Views.kpExamSetup = function () {
     var cfg = L.Bank.cfg.keypost;
     var positions = L.Bank.positionList();
+    var basePos = positions.filter(function (p) { return !p.combo; });
     var banks = L.Bank.list('keypost');
     var dBanks = banks.filter(function (b) { return b.subject === 'D'; });
     var majors = {};
     dBanks.forEach(function (b) { (majors[b.major || '其他'] = majors[b.major || '其他'] || []).push(b); });
 
-    var state = { type: 'first', post: positions[0] ? positions[0].key : 'top', major: Object.keys(majors)[0] || '', cat: '' };
+    var state = { main: 'top', vice: '', post: 'top', major: Object.keys(majors)[0] || '', cat: '' };
     if (state.major && majors[state.major]) state.cat = majors[state.major][0].id;
-    // 直达链接预填（?post=tech&exam=2&cat=<二级类别id>）
+    // 直达链接预填（?post=tech&cat=<二级类别id>）
     if (_deep && _deep.post && L.Bank.getPosition(_deep.post)) {
-      state.post = _deep.post;
-      if (_deep.type) state.type = _deep.type;
-      if (_deep.cat) {
-        var _fb = dBanks.filter(function (b) { return b.id === _deep.cat || b.name === _deep.cat; })[0];
-        if (_fb) { state.major = _fb.major || '其他'; state.cat = _fb.id; }
-      }
+      state.main = _deep.post;
     }
-    function curPos() { return L.Bank.getPosition(state.post) || positions[0]; }
-
-    function postCards() {
-      return positions.map(function (p) {
-        return '<div class="pick' + (state.post === p.key ? ' on' : '') + '" data-post="' + p.key + '">' +
-          '<div class="nm">' + esc(p.name) + '　<span class="tag ok">' + esc(p.focus) + '</span></div>' +
-          '<div class="ds">' + esc(p.note) + '</div>' +
-          '<div class="qs">' + esc(L.Engine.planSummary(p.plan)) + '</div></div>';
-      }).join('');
+    if (_deep && _deep.cat) {
+      var _fb = dBanks.filter(function (b) { return b.id === _deep.cat || b.name === _deep.cat; })[0];
+      if (_fb) { state.major = _fb.major || '其他'; state.cat = _fb.id; }
+    }
+    function effKey() { return state.vice ? state.main + '_' + state.vice : state.main; }
+    function effPos() { return L.Bank.getPosition(state.post) || L.Bank.getPosition(state.main) || basePos[0]; }
+    function opt(list, sel) {
+      return list.map(function (p) { return '<option value="' + esc(p.key) + '"' + (sel === p.key ? ' selected' : '') + '>' + esc(p.name) + '</option>'; }).join('');
     }
     function catOptions() {
       var g = majors[state.major] || [];
@@ -735,35 +730,27 @@
     }
 
     function render() {
-      var pos = curPos();
-      var needD = state.type === 'extend' || Object.keys(pos.plan).indexOf('D') >= 0;
+      state.post = effKey();
+      var pos = effPos();
+      var needD = Object.keys(pos.plan).indexOf('D') >= 0;
       setHTML(
         crumb([{ t: '首页', go: 'home' }, { t: '关键岗位人员考试', go: 'keypost' }, { t: '考试模式' }]) +
         '<div class="page-hd"><div><h2>关键岗位人员考试 · 组卷设置</h2>' +
-        '<div class="sub">组卷规则依据《湖南省检验检测机构关键岗位人员考试大纲（2025年版）》4.2 条</div></div></div>' +
+        '<div class="sub">组卷规则依据《湖南省检验检测机构关键岗位人员考试大纲（2025年版）》4.2 与 4.2.1.5（兼任）</div></div></div>' +
 
         '<div class="card pad" style="margin-bottom:16px">' +
-        '<div style="font-size:13.5px;font-weight:600;margin-bottom:10px">一、考试类型</div>' +
-        '<div class="grid g2">' +
-        '<div class="pick' + (state.type === 'first' ? ' on' : '') + '" data-type="first">' +
-        '<div class="nm">首次考试</div><div class="ds">按报考岗位大纲配比组卷，单选1分、多选2分、判断2分，合计100分</div>' +
-        '<div class="qs">时长 ' + cfg.firstMin + ' 分钟　合格线 ' + cfg.passScore + ' 分</div></div>' +
-        '<div class="pick' + (state.type === 'extend' ? ' on' : '') + '" data-type="extend">' +
-        '<div class="nm">扩领域考试</div><div class="ds">仅考科目D 一个专业类别：单选20×2分、多选20×2分、判断10×2分</div>' +
-        '<div class="qs">时长 ' + cfg.extendMin + ' 分钟　合格线 ' + cfg.passScore + ' 分</div></div>' +
-        '</div></div>' +
-
-        (state.type === 'first' ?
-          '<div class="card pad" style="margin-bottom:16px">' +
-          '<div style="font-size:13.5px;font-weight:600;margin-bottom:10px">二、报考岗位</div>' +
-          '<div class="grid g2">' + postCards() + '</div>' +
-          '<div style="margin-top:10px;font-size:12.5px;color:var(--ink-400)">' +
-          '兼任说明：最高管理者兼任其他关键岗位时按其他岗位考试；质量负责人兼任授权签字人时按「授权签字人」考试；授权签字人兼任技术负责人时按「技术负责人」考试。</div>' +
-          '</div>' : '') +
+        '<div style="font-size:13.5px;font-weight:600;margin-bottom:10px">一、报考岗位</div>' +
+        '<div style="display:flex;gap:14px;flex-wrap:wrap">' +
+        '<label class="fld" style="flex:1;min-width:240px;margin:0"><span>报考岗位</span><select id="selMain">' + opt(basePos, state.main) + '</select></label>' +
+        '<label class="fld" style="flex:1;min-width:240px;margin:0"><span>兼任其他关键岗位（可选）</span><select id="selVice">' +
+        '<option value=""' + (state.vice === '' ? ' selected' : '') + '>不兼任</option>' + opt(basePos, state.vice) + '</select></label>' +
+        '</div>' +
+        '<div style="margin-top:10px;font-size:12.5px;color:var(--ink-400)">可兼任一个其他关键岗位，考试按兼任岗位要求组卷（大纲 4.2.1.5）：最高管理者兼任其他按其他岗位；质量负责人兼任授权签字人按授权签字人；授权签字人兼任技术负责人按技术负责人。</div>' +
+        '</div>' +
 
         (needD ?
           '<div class="card pad" style="margin-bottom:16px">' +
-          '<div style="font-size:13.5px;font-weight:600;margin-bottom:10px">' + (state.type === 'first' ? '三' : '二') + '、科目D 专业类别</div>' +
+          '<div style="font-size:13.5px;font-weight:600;margin-bottom:10px">二、科目D 专业类别</div>' +
           '<div style="display:flex;gap:14px;flex-wrap:wrap">' +
           '<label class="fld" style="flex:1;min-width:240px;margin:0"><span>专业大类</span><select id="selMajor">' +
           Object.keys(majors).map(function (m) { return '<option value="' + esc(m) + '"' + (state.major === m ? ' selected' : '') + '>' + esc(m) + '</option>'; }).join('') +
@@ -774,7 +761,7 @@
           '</div>' : '') +
 
         '<div class="card pad">' +
-        '<div style="font-size:13.5px;font-weight:600;margin-bottom:12px">' + (state.type === 'first' ? (needD ? '四' : '三') : '三') + '、考生信息</div>' +
+        '<div style="font-size:13.5px;font-weight:600;margin-bottom:12px">' + (needD ? '三' : '二') + '、考生信息</div>' +
         '<div class="grid g3">' +
         '<label class="fld"><span>姓名<b style="color:var(--red)">*</b></span><input type="text" id="exName" placeholder="请输入考生姓名" value="' + esc((_session && _session.name) || '') + '"></label>' +
         '<label class="fld"><span>身份证号 / 工号</span><input type="text" id="exNo" placeholder="选填" value="' + esc((_session && _session.no) || '') + '"></label>' +
@@ -789,22 +776,25 @@
         '</div>'
       );
 
-      $$('[data-type]').forEach(function (el) { el.onclick = function () { state.type = el.getAttribute('data-type'); render(); }; });
-      $$('[data-post]').forEach(function (el) { el.onclick = function () { state.post = el.getAttribute('data-post'); render(); }; });
-      var sm = $('#selMajor');
-      if (sm) sm.onchange = function () { state.major = sm.value; state.cat = (majors[state.major][0] || {}).id || ''; render(); };
+      var sm = $('#selMain');
+      if (sm) sm.onchange = function () { state.main = sm.value; render(); };
+      var sv = $('#selVice');
+      if (sv) sv.onchange = function () {
+        if (sv.value && sv.value === state.main) { state.vice = ''; toast('兼任岗位不能与报考岗位相同，已取消兼任', 'err'); render(); return; }
+        state.vice = sv.value; render();
+      };
+      var smj = $('#selMajor');
+      if (smj) smj.onchange = function () { state.major = smj.value; state.cat = (majors[state.major][0] || {}).id || ''; render(); };
       var sc = $('#selCat');
       if (sc) sc.onchange = function () { state.cat = sc.value; };
 
-      var plan = state.type === 'first' ? pos.plan : L.Engine.EXTEND_PLAN;
-      $('#paperInfo').innerHTML = '本场组卷：' + esc(L.Engine.planSummary(plan)) +
-        '　·　时长 ' + (state.type === 'first' ? cfg.firstMin : cfg.extendMin) + ' 分钟';
+      $('#paperInfo').innerHTML = '本场报考：<b>' + esc(pos.name) + '</b>　·　组卷：' + esc(L.Engine.planSummary(pos.plan)) +
+        '　·　时长 ' + cfg.firstMin + ' 分钟　·　合格线 ' + cfg.passScore + ' 分';
 
       $('#startExam').onclick = function () {
         var name = ($('#exName').value || '').trim();
         if (!name) return toast('请填写考生姓名', 'err');
-        var needD2 = state.type === 'extend' || Object.keys(pos.plan).indexOf('D') >= 0;
-        if (needD2 && !state.cat) return toast('请选择科目D 专业类别', 'err');
+        if (needD && !state.cat) return toast('请选择科目D 专业类别', 'err');
         prepareKPExam(state, {
           name: name, no: ($('#exNo').value || '').trim(), dept: ($('#exDept').value || '').trim()
         });
@@ -827,10 +817,10 @@
 
     Promise.all(jobs).then(function () {
       var paper = L.Engine.buildPaper({
-        mode: state.type, post: state.post, pool: pools,
-        planObj: state.type === 'first' ? pos.plan : null,
+        mode: 'first', post: state.post, pool: pools,
+        planObj: pos.plan,
         postName: pos.name,
-        minutes: state.type === 'first' ? cfg.firstMin : cfg.extendMin,
+        minutes: cfg.firstMin,
         shuffleOptions: cfg.shuffleOptions
       });
       var catMeta = state.cat ? L.Bank.meta('keypost', state.cat) : null;
