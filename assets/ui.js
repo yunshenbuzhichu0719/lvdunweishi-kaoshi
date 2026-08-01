@@ -219,6 +219,7 @@
       '<label class="fld"><span>密码 <b style="color:var(--red)">*</b></span><input type="password" id="aPw" placeholder="请输入密码" autocomplete="current-password"></label>' +
       '<div class="lc-err" id="aErr"></div>' +
       '<button class="btn lg" id="btnAlogin">登　录</button>' +
+      '<div class="lc-tip">管理员账户可在后台「管理员账户」页生成与管理；初始账户 <b>admin</b> / 初始密码 <b>' + esc((L.Bank.cfg && L.Bank.cfg.adminPass) || 'ldws2025') + '</b>，登录后请尽快修改。</div>' +
       '</div>' +
       '<div style="margin-top:16px;font-size:13px;color:var(--ink-400)"><a id="toExaminee" style="cursor:pointer;color:var(--green-800);text-decoration:underline">← 返回考生登录</a></div>' +
       '</div>'
@@ -241,6 +242,7 @@
   };
 
   Views.login = function () {
+    var SEC_Q = ['您母亲的姓名？', '您就读的第一所小学名称？', '您出生城市的名称？', '您宠物的名字？', '您最喜欢的一本书？'];
     setHTML(
       '<div class="login-wrap"><div class="login-card">' +
       '<div class="lc-logo"><svg viewBox="0 0 32 38" width="34" height="40" aria-hidden="true">' +
@@ -258,6 +260,44 @@
       '<button class="btn lg" id="btnLogin">登　录</button>' +
       '</div>' +
 
+      // 注册面板
+      '<div id="regPane" class="hidden">' +
+      '<label class="fld"><span>用户名 <b style="color:var(--red)">*</b></span><input type="text" id="rUser" placeholder="用于登录，建议用姓名拼音/工号"></label>' +
+      '<div class="grid g2">' +
+      '<label class="fld"><span>密码 <b style="color:var(--red)">*</b></span><input type="password" id="rPw" placeholder="至少 4 位"></label>' +
+      '<label class="fld"><span>确认密码 <b style="color:var(--red)">*</b></span><input type="password" id="rPw2" placeholder="再次输入密码"></label></div>' +
+      '<label class="fld"><span>姓名 <b style="color:var(--red)">*</b></span><input type="text" id="rName" placeholder="考生真实姓名" autocomplete="name"></label>' +
+      '<div class="grid g2">' +
+      '<label class="fld"><span>工号 / 证件号</span><input type="text" id="rNo" placeholder="选填"></label>' +
+      '<label class="fld"><span>所在部门</span><input type="text" id="rDept" placeholder="选填"></label></div>' +
+      '<label class="fld"><span>密保问题 <b style="color:var(--red)">*</b></span><select id="rQ">' + SEC_Q.map(function (q) { return '<option value="' + esc(q) + '">' + esc(q) + '</option>'; }).join('') + '</select></label>' +
+      '<label class="fld"><span>密保答案 <b style="color:var(--red)">*</b></span><input type="text" id="rA" placeholder="用于找回密码"></label>' +
+      '<div class="lc-err" id="regErr"></div>' +
+      '<button class="btn lg" id="btnReg">注　册</button>' +
+      '<div class="lc-tip">账号仅保存在你本机浏览器；注册后即可用用户名+密码登录，并自动带入姓名/工号/部门。</div>' +
+      '</div>' +
+
+      // 忘记密码面板
+      '<div id="fpPane" class="hidden">' +
+      '<label class="fld"><span>用户名 <b style="color:var(--red)">*</b></span><input type="text" id="fUser" placeholder="请输入注册时的用户名"></label>' +
+      '<div id="fpStep2" class="hidden">' +
+      '<div class="lc-q" id="fQText"></div>' +
+      '<label class="fld"><span>密保答案 <b style="color:var(--red)">*</b></span><input type="text" id="fA" placeholder="请输入密保问题答案"></label>' +
+      '<div class="grid g2">' +
+      '<label class="fld"><span>新密码 <b style="color:var(--red)">*</b></span><input type="password" id="fPw" placeholder="至少 4 位"></label>' +
+      '<label class="fld"><span>确认新密码 <b style="color:var(--red)">*</b></span><input type="password" id="fPw2" placeholder="再次输入"></label></div>' +
+      '</div>' +
+      '<div class="lc-err" id="fpErr"></div>' +
+      '<button class="btn lg" id="btnFp">下　一　步</button>' +
+      '<div class="lc-tip">通过注册时设置的密保问题验证身份，即可重置密码。</div>' +
+      '</div>' +
+
+      // 切换标签（登录 / 注册 / 忘记密码）置于长条登录按钮正下方
+      '<div class="lc-tabs">' +
+      '<button class="lc-tab on" data-tab="login">登录</button>' +
+      '<button class="lc-tab" data-tab="reg">注册</button>' +
+      '<button class="lc-tab" data-tab="fp">忘记密码</button>' +
+      '</div>' +
       '<div class="lc-tip">登录后将以该身份参加考试，成绩与答卷记入你的考试档案，可在「后台管理 → 考试记录」中查询、打印存档。</div>' +
 
       '</div>' +
@@ -267,6 +307,13 @@
     var toAdmin = document.getElementById('toAdmin');
     if (toAdmin) toAdmin.onclick = function () { go('adminLogin'); };
 
+    function switchTab(t) {
+      $$('.lc-tab').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-tab') === t); });
+      $('#loginPane').classList.toggle('hidden', t !== 'login');
+      $('#regPane').classList.toggle('hidden', t !== 'reg');
+      $('#fpPane').classList.toggle('hidden', t !== 'fp');
+    }
+    $$('.lc-tab').forEach(function (b) { b.onclick = function () { switchTab(b.getAttribute('data-tab')); }; });
 
     function setErr(id, msg) { var e = $('#' + id); if (e) e.textContent = msg || ''; }
 
@@ -277,7 +324,7 @@
       if (!user) { setErr('loginErr', '请输入用户名'); return; }
       setErr('loginErr', '');
       L.Bank.accounts.get(user).then(function (acc) {
-        if (!acc) { setErr('loginErr', '账号不存在'); return; }
+        if (!acc) { setErr('loginErr', '账号不存在，请先注册'); return; }
         if (L.pwHash(pw) !== acc.pass) { setErr('loginErr', '账号或密码错误'); return; }
         doLogin({ user: acc.user, name: acc.name, no: acc.no || '', dept: acc.dept || '', guest: false });
       });
@@ -286,7 +333,65 @@
     $('#lUser').onkeydown = function (e) { if (e.key === 'Enter') tryLogin(); };
     $('#lPw').onkeydown = function (e) { if (e.key === 'Enter') tryLogin(); };
 
+    // ---- 注册 ----
+    function tryReg() {
+      var user = ($('#rUser').value || '').trim();
+      var pw = $('#rPw').value || '', pw2 = $('#rPw2').value || '';
+      var name = ($('#rName').value || '').trim();
+      var ans = ($('#rA').value || '').trim().toLowerCase();
+      setErr('regErr', '');
+      if (user.length < 2) return setErr('regErr', '用户名至少 2 个字符');
+      if (pw.length < 4) return setErr('regErr', '密码至少 4 位');
+      if (pw !== pw2) return setErr('regErr', '两次输入的密码不一致');
+      if (!name) return setErr('regErr', '请填写姓名');
+      if (!ans) return setErr('regErr', '请填写密保答案');
+      L.Bank.accounts.get(user).then(function (ex) {
+        if (ex) { setErr('regErr', '该用户名已被注册'); return; }
+        var acc = {
+          user: user, pass: L.pwHash(pw), name: name,
+          no: ($('#rNo').value || '').trim(), dept: ($('#rDept').value || '').trim(),
+          q: $('#rQ').value, a: L.pwHash(ans)
+        };
+        L.Bank.accounts.save(acc).then(function () {
+          doLogin({ user: acc.user, name: acc.name, no: acc.no, dept: acc.dept, guest: false });
+        });
+      });
+    }
+    $('#btnReg').onclick = tryReg;
 
+    // ---- 忘记密码 ----
+    var _fpAcc = null, _fpStep = 1;
+    function tryFp() {
+      if (_fpStep === 1) {
+        var user = ($('#fUser').value || '').trim();
+        if (!user) { setErr('fpErr', '请输入用户名'); return; }
+        setErr('fpErr', '');
+        L.Bank.accounts.get(user).then(function (acc) {
+          if (!acc) { setErr('fpErr', '该账号不存在'); return; }
+          _fpAcc = acc; _fpStep = 2;
+          $('#fQText').textContent = '密保问题：' + acc.q;
+          $('#fpStep2').classList.remove('hidden');
+          $('#btnFp').textContent = '重　置　密　码';
+          var fa = $('#fA'); if (fa) fa.focus();
+        });
+      } else {
+        var na = ($('#fPw').value || ''), na2 = ($('#fPw2').value || '');
+        var answ = ($('#fA').value || '').trim().toLowerCase();
+        if (!_fpAcc) return setErr('fpErr', '请先输入用户名');
+        if (L.pwHash(answ) !== _fpAcc.a) return setErr('fpErr', '密保答案不正确');
+        if (na.length < 4) return setErr('fpErr', '新密码至少 4 位');
+        if (na !== na2) return setErr('fpErr', '两次密码不一致');
+        L.Bank.accounts.update(_fpAcc.user, { pass: L.pwHash(na) }).then(function () {
+          switchTab('login');
+          $('#lUser').value = _fpAcc.user;
+          _fpStep = 1; _fpAcc = null;
+          $('#fpStep2').classList.add('hidden');
+          $('#btnFp').textContent = '下　一　步';
+          toast('密码已重置，请用新密码登录', 'ok');
+        });
+      }
+    }
+    $('#btnFp').onclick = tryFp;
   };
 
   /* ============ 模块首页 ============ */
