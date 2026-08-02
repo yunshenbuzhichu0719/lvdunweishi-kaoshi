@@ -358,7 +358,7 @@ table.tbl tr:hover td{background:#fafcfb}
   .tb-title{min-width:0}
   .tb-title .t1{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:calc(100vw - 24px);line-height:1.2}
   .tb-title .t2{display:none}
-  .tb-right{flex:1 0 auto;justify-content:flex-end;gap:5px;margin-top:0}
+  .tb-right{flex:1 1 100%;justify-content:flex-end;gap:5px;margin-top:0}
   #userChip{max-width:calc(100vw - 180px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
   .hero{padding:14px 14px 16px;margin-bottom:14px;border-radius:12px}
