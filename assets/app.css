@@ -97,6 +97,14 @@ table.tbl tr:hover td{background:#fafcfb}
 .tbl-wrap{overflow:auto;border:1px solid var(--line);border-radius:var(--radius);background:#fff}
 
 /* ---------- 首页 ---------- */
+.home-tools{
+  display:flex;align-items:center;justify-content:flex-end;gap:8px;
+  margin:-6px 0 6px;  /* 紧贴 hero 顶部灰线上方，向上一点点 */
+}
+.home-tools .chip{background:var(--green-050);color:var(--green-700);border:1px solid var(--green-100)}
+.home-tools #btnHomeInline{background:var(--green-900);color:#fff;border-color:var(--green-900)}
+.home-tools #btnHomeInline:hover{background:#084a30;border-color:#084a30}
+
 .hero{
   background:linear-gradient(118deg,var(--green-900),var(--green-600) 62%,var(--green-500));
   border-radius:16px;padding:34px 36px;color:#fff;margin-bottom:24px;position:relative;overflow:hidden
@@ -124,6 +132,12 @@ table.tbl tr:hover td{background:#fafcfb}
 .mod .ic{width:46px;height:46px;border-radius:12px;display:grid;place-items:center;margin-bottom:14px}
 .mod.m1 .ic{background:var(--blue-bg)}
 .mod.m2 .ic{background:var(--green-050)}
+.mod-head{
+  display:flex;align-items:center;gap:8px;margin-bottom:14px;
+}
+.mod-head .ic{margin-bottom:0;flex:0 0 auto}
+.mod-head h3{margin:0;font-size:18px;color:var(--ink-900);flex:1 1 auto;min-width:0}
+.mod-head .go{flex:0 0 auto;color:var(--green-800);font-weight:600;font-size:13.5px;white-space:nowrap}
 .mod h3{margin:0 0 6px;font-size:18px;color:var(--ink-900)}
 .mod p{margin:0 0 16px;color:var(--ink-600);font-size:13px;min-height:40px}
 .mod .feats{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
@@ -362,11 +376,16 @@ table.tbl tr:hover td{background:#fafcfb}
   .hero .stats{gap:10px 20px;margin-top:10px}
   .hero .stats div b{font-size:17px;line-height:1.1}
   .hero .stats div span{font-size:11.5px}
+  .home-tools{margin:-4px 0 4px;gap:6px}
+  .home-tools #btnHomeInline{padding:5px 11px;font-size:12.5px}
   .mod{padding:18px;border-radius:14px}
   .mod h3{font-size:16px}
   .mod p{font-size:12.5px;min-height:0;margin-bottom:12px}
   .mod .ic{width:38px;height:38px;margin-bottom:10px}
   .mod .feats{margin-bottom:12px}
+  .mod-head .ic{width:34px;height:34px}
+  .mod-head h3{font-size:15.5px}
+  .mod-head .go{font-size:13px}
 
   .login-wrap{padding:12px 12px 20px;min-height:auto}
   .login-card{padding:22px 18px;border-radius:14px}
