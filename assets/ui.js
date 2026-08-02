@@ -913,10 +913,11 @@
       var subCards = pos ? pos.subs.map(function (sub, i) {
         var n = (sub.n[1] || 0) + (sub.n[2] || 0) + (sub.n[3] || 0);
         return '<div class="pick sub-exam" data-sub="' + i + '">' +
-          '<div class="nm">' + esc(sub.name) + (i === 0 ? ' <span class="chip" style="background:#fdeceb;color:#c0392b;border-color:#f5c6c6">必过</span>' : '') + '</div>' +
+          '<div class="nm"><span>' + esc(sub.name) + (i === 0 ? ' <span class="chip" style="background:#fdeceb;color:#c0392b;border-color:#f5c6c6">必过</span>' : '') + '</span>' +
+          '<span class="enter">点击进入本专项考试 →</span></div>' +
           '<div class="ds">单选 ' + (sub.n[1] || 0) + ' · 多选 ' + (sub.n[2] || 0) + ' · 判断 ' + (sub.n[3] || 0) + '（共 ' + n + ' 题）</div>' +
           '<div class="qs">时长 ' + subMinutes(sub) + ' 分钟 · 合格：' + subReqText(sub) + '</div>' +
-          '<div class="qs" style="margin-top:6px;color:var(--green-700);font-weight:600">点击进入本专项考试 →</div></div>';
+          '</div>';
       }).join('') : '';
 
       var customCards = customPlans.map(function (p, i) {
