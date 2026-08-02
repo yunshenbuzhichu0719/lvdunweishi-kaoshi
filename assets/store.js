@@ -148,6 +148,13 @@
       Bank.kpData.questions.forEach(function (q) {
         (Bank._builtinIdx[q.c] = Bank._builtinIdx[q.c] || []).push(q);
       });
+      // 内置日常培训题库
+      Bank.dailyData = global.__DAILY_BANK__ || { banks: [], questions: [] };
+      Bank._dailyIdx = {};
+      Bank.dailyData.questions.forEach(function (q) {
+        var bid = q.bank || 'D1';
+        (Bank._dailyIdx[bid] = Bank._dailyIdx[bid] || []).push(q);
+      });
       return Bank.loadCfg()
         .then(function () {
           if (!Array.isArray(Bank.cfg.keypost.positions) ||
@@ -173,6 +180,14 @@
           });
         });
       }
+      if (ns === 'daily') {
+        (Bank.dailyData.banks || []).forEach(function (b) {
+          out.push({
+            id: b.id, ns: 'daily', builtin: true, subject: b.subject || '', major: b.major || '',
+            name: b.name, n1: b.n1, n2: b.n2, n3: b.n3, total: b.total
+          });
+        });
+      }
       (Bank.extra[ns] || []).forEach(function (b) { out.push(b); });
       return out;
     },
@@ -180,6 +195,7 @@
     /** 取题库题目（Promise） */
     questions: function (id) {
       if (Bank._builtinIdx && Bank._builtinIdx[id]) return Promise.resolve(Bank._builtinIdx[id]);
+      if (Bank._dailyIdx && Bank._dailyIdx[id]) return Promise.resolve(Bank._dailyIdx[id]);
       if (Bank._cache[id]) return Promise.resolve(Bank._cache[id]);
       return Store.get('bank:' + id).then(function (arr) {
         arr = arr || [];
