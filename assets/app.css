@@ -15,7 +15,7 @@
   --font:"PingFang SC","Microsoft YaHei","Hiragino Sans GB","Source Han Sans SC",system-ui,-apple-system,"Segoe UI",sans-serif;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;padding:0}
+html,body{margin:0;padding:0;overscroll-behavior-x:contain}
 body{
   font-family:var(--font); background:var(--bg); color:var(--ink-800);
   font-size:14.5px; line-height:1.65; -webkit-font-smoothing:antialiased;
