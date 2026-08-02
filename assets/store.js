@@ -98,6 +98,98 @@
     else { _mode = 'mem'; }
   }
 
+  /* ================= 日常培训岗位考试方案（按题号范围） ================= */
+  var DAILY_POSITION_PLANS = [
+    {
+      name: '采样员理论考核',
+      kind: 'position',
+      position: '采样员',
+      minutes: 120,
+      scoreMap: { 1: 1, 2: 1, 3: 1 },
+      pass: 'all',
+      subs: [
+        { name: '安全专项', passMode: 'percent', pass: 100, n: { 1: 15, 2: 8, 3: 7 }, ranges: { 1: [51, 80], 2: [136, 148], 3: [189, 208] } },
+        { name: '通用基础', passMode: 'score', pass: 80, n: { 1: 20, 2: 10, 3: 10 }, ranges: { 1: [1, 50], 2: [111, 135], 3: [164, 188] } },
+        { name: '采样专项', passMode: 'score', pass: 80, n: { 1: 15, 2: 10, 3: 5 }, ranges: { 1: [81, 95], 2: [149, 158], 3: [209, 213] } }
+      ]
+    },
+    {
+      name: '实验室检测员理论考核',
+      kind: 'position',
+      position: '实验室检测员',
+      minutes: 120,
+      scoreMap: { 1: 1, 2: 1, 3: 1 },
+      pass: 'all',
+      subs: [
+        { name: '安全专项', passMode: 'percent', pass: 100, n: { 1: 15, 2: 8, 3: 7 }, ranges: { 1: [51, 80], 2: [136, 148], 3: [189, 208] } },
+        { name: '通用基础', passMode: 'score', pass: 80, n: { 1: 20, 2: 10, 3: 10 }, ranges: { 1: [1, 50], 2: [111, 135], 3: [164, 188] } },
+        { name: '检测专项', passMode: 'score', pass: 80, n: { 1: 15, 2: 10, 3: 5 }, ranges: { 1: [81, 95], 2: [149, 158], 3: [209, 213] } }
+      ]
+    },
+    {
+      name: '报告编制员理论考核',
+      kind: 'position',
+      position: '报告编制员',
+      minutes: 100,
+      scoreMap: { 1: 1, 2: 1, 3: 1 },
+      pass: 'all',
+      subs: [
+        { name: '安全专项', passMode: 'percent', pass: 100, n: { 1: 15, 2: 8, 3: 7 }, ranges: { 1: [51, 80], 2: [136, 148], 3: [189, 208] } },
+        { name: '通用基础', passMode: 'score', pass: 80, n: { 1: 20, 2: 10, 3: 10 }, ranges: { 1: [1, 50], 2: [111, 135], 3: [164, 188] } },
+        { name: '报告专项', passMode: 'score', pass: 85, n: { 1: 15, 2: 3, 3: 2 }, ranges: { 1: [96, 110], 2: [159, 163], 3: [214, 216] } }
+      ]
+    },
+    {
+      name: '报告审核员理论考核',
+      kind: 'position',
+      position: '报告审核员',
+      minutes: 100,
+      scoreMap: { 1: 1, 2: 1, 3: 1 },
+      pass: 'all',
+      subs: [
+        { name: '安全专项', passMode: 'percent', pass: 100, n: { 1: 15, 2: 8, 3: 7 }, ranges: { 1: [51, 80], 2: [136, 148], 3: [189, 208] } },
+        { name: '通用基础', passMode: 'score', pass: 80, n: { 1: 20, 2: 10, 3: 10 }, ranges: { 1: [1, 50], 2: [111, 135], 3: [164, 188] } },
+        { name: '报告专项', passMode: 'score', pass: 85, n: { 1: 15, 2: 3, 3: 2 }, ranges: { 1: [96, 110], 2: [159, 163], 3: [214, 216] } }
+      ]
+    },
+    {
+      name: '样品员理论考核',
+      kind: 'position',
+      position: '样品员',
+      minutes: 80,
+      scoreMap: { 1: 1, 2: 1, 3: 1 },
+      pass: 'all',
+      subs: [
+        { name: '安全专项', passMode: 'percent', pass: 100, n: { 1: 15, 2: 8, 3: 7 }, ranges: { 1: [51, 80], 2: [136, 148], 3: [189, 208] } },
+        { name: '通用基础', passMode: 'score', pass: 80, n: { 1: 20, 2: 10, 3: 10 }, ranges: { 1: [1, 50], 2: [111, 135], 3: [164, 188] } }
+      ]
+    },
+    {
+      name: '设备员理论考核',
+      kind: 'position',
+      position: '设备员',
+      minutes: 80,
+      scoreMap: { 1: 1, 2: 1, 3: 1 },
+      pass: 'all',
+      subs: [
+        { name: '安全专项', passMode: 'percent', pass: 100, n: { 1: 15, 2: 8, 3: 7 }, ranges: { 1: [51, 80], 2: [136, 148], 3: [189, 208] } },
+        { name: '通用基础', passMode: 'score', pass: 80, n: { 1: 20, 2: 10, 3: 10 }, ranges: { 1: [1, 50], 2: [111, 135], 3: [164, 188] } }
+      ]
+    },
+    {
+      name: '质量管理员理论考核',
+      kind: 'position',
+      position: '质量管理员',
+      minutes: 80,
+      scoreMap: { 1: 1, 2: 1, 3: 1 },
+      pass: 'all',
+      subs: [
+        { name: '安全专项', passMode: 'percent', pass: 100, n: { 1: 15, 2: 8, 3: 7 }, ranges: { 1: [51, 80], 2: [136, 148], 3: [189, 208] } },
+        { name: '通用基础', passMode: 'score', pass: 80, n: { 1: 20, 2: 10, 3: 10 }, ranges: { 1: [1, 50], 2: [111, 135], 3: [164, 188] } }
+      ]
+    }
+  ];
+
   /* ================= 默认配置 ================= */
   var DEFAULT_CFG = {
     adminPass: 'ldws2025',
@@ -115,7 +207,7 @@
       switchLimit: 3,
       shuffleOptions: true,
       antiCopy: false,
-      plans: []              // 日常培训考试方案
+      plans: DAILY_POSITION_PLANS  // 日常培训考试方案（内置岗位方案）
     },
     report: {               // 成绩回传（集中收集）
       enabled: false,       // 是否启用回传
@@ -136,6 +228,12 @@
     loadCfg: function () {
       return Store.get('cfg').then(function (c) {
         Bank.cfg = deepMerge(JSON.parse(JSON.stringify(DEFAULT_CFG)), c || {});
+        // 若老用户尚未配置日常岗位方案，自动播种内置方案
+        if (!Bank.cfg.daily._seededV2 && (!Bank.cfg.daily.plans || !Bank.cfg.daily.plans.length)) {
+          Bank.cfg.daily.plans = JSON.parse(JSON.stringify(DAILY_POSITION_PLANS));
+          Bank.cfg.daily._seededV2 = true;
+          return Bank.saveCfg().then(function () { return Bank.cfg; });
+        }
         return Bank.cfg;
       });
     },
