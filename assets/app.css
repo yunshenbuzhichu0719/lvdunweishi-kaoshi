@@ -97,14 +97,6 @@ table.tbl tr:hover td{background:#fafcfb}
 .tbl-wrap{overflow:auto;border:1px solid var(--line);border-radius:var(--radius);background:#fff}
 
 /* ---------- 首页 ---------- */
-.home-tools{
-  display:flex;align-items:center;justify-content:flex-end;gap:8px;
-  margin:-6px 0 6px;  /* 紧贴 hero 顶部灰线上方，向上一点点 */
-}
-.home-tools .chip{background:var(--green-050);color:var(--green-700);border:1px solid var(--green-100)}
-.home-tools #btnHomeInline{background:var(--green-900);color:#fff;border-color:var(--green-900)}
-.home-tools #btnHomeInline:hover{background:#084a30;border-color:#084a30}
-
 .hero{
   background:linear-gradient(118deg,var(--green-900),var(--green-600) 62%,var(--green-500));
   border-radius:16px;padding:34px 36px;color:#fff;margin-bottom:24px;position:relative;overflow:hidden
@@ -376,8 +368,6 @@ table.tbl tr:hover td{background:#fafcfb}
   .hero .stats{gap:10px 20px;margin-top:10px}
   .hero .stats div b{font-size:17px;line-height:1.1}
   .hero .stats div span{font-size:11.5px}
-  .home-tools{margin:-4px 0 4px;gap:6px}
-  .home-tools #btnHomeInline{padding:5px 11px;font-size:12.5px}
   .mod{padding:18px;border-radius:14px}
   .mod h3{font-size:16px}
   .mod p{font-size:12.5px;min-height:0;margin-bottom:12px}
