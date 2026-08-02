@@ -891,24 +891,45 @@
     var state = { plan: plans.length ? 0 : -1 };
 
     function render() {
+      var p = plans[state.plan];
+      var isPos = p && p.kind === 'position';
+      var totalQ = isPos ? p.subs.reduce(function (s, sub) {
+        return s + (sub.n[1] || 0) + (sub.n[2] || 0) + (sub.n[3] || 0);
+      }, 0) : (p ? p.n1 + p.n2 + p.n3 : 0);
+
       setHTML(
         crumb([{ t: '首页', go: 'home' }, { t: '日常培训考核', go: 'daily' }, { t: '考试模式' }]) +
         '<div class="page-hd"><div><h2>日常培训考核 · 考试</h2><div class="sub">选择后台配置的考试方案，系统随机组卷</div></div></div>' +
         (plans.length ?
           '<div class="card pad" style="margin-bottom:16px"><div style="font-size:13.5px;font-weight:600;margin-bottom:10px">一、选择考试方案</div>' +
           '<div class="grid g2">' + plans.map(function (p, i) {
+            var isPos2 = p.kind === 'position';
+            var tq = isPos2 ? p.subs.reduce(function (s, sub) { return s + (sub.n[1] || 0) + (sub.n[2] || 0) + (sub.n[3] || 0); }, 0) : p.n1 + p.n2 + p.n3;
             var bn = (p.banks || []).map(function (id) { var m = L.Bank.meta('daily', id); return m ? m.name : '(已删除)'; });
             return '<div class="pick' + (state.plan === i ? ' on' : '') + '" data-plan="' + i + '">' +
-              '<div class="nm">' + esc(p.name) + '</div>' +
-              '<div class="ds">单选 ' + p.n1 + '×' + p.s1 + '分　多选 ' + p.n2 + '×' + p.s2 + '分　判断 ' + p.n3 + '×' + p.s3 + '分</div>' +
-              '<div class="qs">时长 ' + p.minutes + ' 分钟 · 合格 ' + p.pass + ' 分 · 题库：' + esc(bn.join('、') || '未指定') + '</div></div>';
+              '<div class="nm">' + esc(p.name) + (isPos2 ? ' <span class="chip" style="background:#fff7e6;color:#b8860b;border-color:#f0d9a8">岗位</span>' : '') + '</div>' +
+              (isPos2 ?
+                '<div class="ds">' + esc(L.Engine.planSummary(p)) + '</div>' +
+                '<div class="qs">时长 ' + p.minutes + ' 分钟 · 总题量 ' + tq + ' 题 · 各专项均须合格</div>' :
+                '<div class="ds">单选 ' + p.n1 + '×' + p.s1 + '分　多选 ' + p.n2 + '×' + p.s2 + '分　判断 ' + p.n3 + '×' + p.s3 + '分</div>' +
+                '<div class="qs">时长 ' + p.minutes + ' 分钟 · 合格 ' + p.pass + ' 分 · 题库：' + esc(bn.join('、') || '未指定') + '</div>') +
+              '</div>';
           }).join('') + '</div></div>'
           :
           '<div class="card pad empty"><div class="big">尚未配置考试方案</div><div>请在「后台管理 → 日常考试方案」中新建方案。</div>' +
           '<div style="margin-top:16px"><button class="btn" id="toAdmin2">前往后台配置</button></div></div>') +
 
+        (isPos ?
+          '<div class="card pad" style="margin-bottom:16px"><div style="font-size:13.5px;font-weight:600;margin-bottom:10px">二、方案详情（须依次达到各专项合格标准）</div>' +
+          '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>专项</th><th>题量</th><th>合格标准</th></tr></thead><tbody>' +
+          p.subs.map(function (sub) {
+            var n = (sub.n[1] || 0) + (sub.n[2] || 0) + (sub.n[3] || 0);
+            var req = sub.passMode === 'percent' ? '100% 正确' : '≥' + (sub.pass || 80) + '%';
+            return '<tr><td><b>' + esc(sub.name) + '</b></td><td>' + n + ' 题</td><td>' + req + '</td></tr>';
+          }).join('') + '</tbody></table></div></div>' : '') +
+
         (plans.length ?
-          '<div class="card pad"><div style="font-size:13.5px;font-weight:600;margin-bottom:12px">二、考生信息</div>' +
+          '<div class="card pad"><div style="font-size:13.5px;font-weight:600;margin-bottom:12px">' + (isPos ? '三' : '二') + '、考生信息</div>' +
           '<div class="grid g3">' +
           '<label class="fld"><span>姓名<b style="color:var(--red)">*</b></span><input type="text" id="exName" placeholder="请输入姓名" value="' + esc((_session && _session.name) || '') + '"></label>' +
           '<label class="fld"><span>工号</span><input type="text" id="exNo" placeholder="选填" value="' + esc((_session && _session.no) || '') + '"></label>' +
@@ -925,23 +946,34 @@
         if (!name) return toast('请填写姓名', 'err');
         if (state.plan < 0) return toast('请选择考试方案', 'err');
         var p = plans[state.plan];
-        L.Bank.questionsOf(p.banks || []).then(function (qs) {
-          var paper = L.Engine.buildPaper({
-            mode: 'custom', title: p.name, minutes: p.minutes,
-            plan: { X: { 1: p.n1, 2: p.n2, 3: p.n3 } },
-            scoreMap: { 1: p.s1, 2: p.s2, 3: p.s3 },
-            pool: { X: qs }, shuffleOptions: cfg.shuffleOptions
-          });
-          paper.passScore = p.pass;
+        var isPos2 = p.kind === 'position';
+        var qids = isPos2 ? ['D1'] : (p.banks || []);
+        L.Bank.questionsOf(qids).then(function (qs) {
+          var paper;
+          if (isPos2) {
+            paper = L.Engine.buildPaper({
+              mode: 'custom', title: p.name, minutes: p.minutes,
+              plan: p, pool: qs, shuffleOptions: cfg.shuffleOptions
+            });
+          } else {
+            paper = L.Engine.buildPaper({
+              mode: 'custom', title: p.name, minutes: p.minutes,
+              plan: { X: { 1: p.n1, 2: p.n2, 3: p.n3 } },
+              scoreMap: { 1: p.s1, 2: p.s2, 3: p.s3 },
+              pool: { X: qs }, shuffleOptions: cfg.shuffleOptions
+            });
+            paper.passScore = p.pass;
+          }
+          var examCfg = { switchLimit: cfg.switchLimit, antiCopy: cfg.antiCopy };
+          if (!isPos2) examCfg.passScore = p.pass;
           var run = function () {
-            startExam('daily', paper, { name: name, no: ($('#exNo').value || '').trim(), dept: ($('#exDept').value || '').trim() },
-              { switchLimit: cfg.switchLimit, passScore: p.pass, antiCopy: cfg.antiCopy });
+            startExam('daily', paper, { name: name, no: ($('#exNo').value || '').trim(), dept: ($('#exDept').value || '').trim() }, examCfg);
           };
           if (paper.warn.length) {
             modal({
               title: '题量提示', lock: true,
               html: '<div style="color:var(--amber)">题库题量不足，已按实际数量组卷：</div><ul style="margin:8px 0 0;padding-left:20px">' +
-                paper.warn.map(function (w) { return '<li>' + esc(w.replace('科目X ', '')) + '</li>'; }).join('') + '</ul>',
+                paper.warn.map(function (w) { return '<li>' + esc(w.replace('科目X ', '').replace('安全专项 ', '').replace('通用基础 ', '').replace('采样专项 ', '').replace('检测专项 ', '').replace('报告专项 ', '')) + '</li>'; }).join('') + '</ul>',
               buttons: [{ text: '返回', value: false }, { text: '仍然开始', primary: true, value: true }]
             }).then(function (v) { if (v) run(); });
           } else run();
@@ -1027,7 +1059,7 @@
       '<div class="page-hd" style="margin-bottom:14px"><div><h2>' + esc(p.title) + '</h2>' +
       '<div class="sub">考生：<b>' + esc(E.who.name) + '</b>' + (E.who.dept ? ' · ' + esc(E.who.dept) : '') +
       (p.category ? ' · 科目D：' + esc(p.category) : '') +
-      ' · 满分 ' + p.totalScore + ' 分 · 合格 ' + (E.cfg.passScore || 70) + ' 分</div></div>' +
+      ' · 满分 ' + p.totalScore + ' 分 · ' + (E.cfg.passScore != null ? '合格 ' + E.cfg.passScore + ' 分' : '各专项均须合格') + '</div></div>' +
       '<span class="chip gray">单选 ' + p.counts[1] + ' · 多选 ' + p.counts[2] + ' · 判断 ' + p.counts[3] + '</span></div>' +
       '<div class="quiz-wrap">' +
       '<div class="quiz-main" id="qmain"></div>' +
@@ -1130,16 +1162,17 @@
     var ansArr = [];
     E.paper.items.forEach(function (_, i) { ansArr[i] = E.ans[i] || []; });
     var r = L.Engine.grade(E.paper, ansArr, {});
-    var pass = r.score >= (E.cfg.passScore || 70);
+    var pass = (r.passed != null) ? r.passed : (r.score >= (E.cfg.passScore || 70));
     var used = Math.round((Date.now() - E.started) / 1000);
     var rec = {
       id: 'R' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
       ts: Date.now(), ns: E.ns, mode: E.paper.mode, title: E.paper.title,
       post: E.paper.post || '', category: E.paper.category || '',
       who: E.who, score: r.score, total: E.paper.total || E.paper.totalScore,
-      pass: pass, passScore: E.cfg.passScore || 70,
+      pass: pass, passScore: (r.passed != null) ? null : (E.cfg.passScore || 70),
       right: r.right, wrong: r.wrong, blank: r.blank,
       used: used, switches: E.switches, auto: !!auto, reason: reason || '',
+      subs: r.subs || null,
       paper: E.paper.items.map(function (it) { return { no: it.no, sub: it.sub, t: it.t, q: it.q, o: it.o, a: it.a, e: it.e, score: it.score }; }),
       detail: r.detail
     };
@@ -1222,17 +1255,28 @@
   /* ============ 成绩单 ============ */
   function showResult(rec) {
     var pass = rec.pass;
+    var passLine = (rec.subs && rec.subs.length) ? '各专项均须合格' : '合格线 ' + (rec.passScore != null ? rec.passScore : '—') + ' 分';
+    var subTable = (rec.subs && rec.subs.length) ?
+      '<div class="card pad" style="margin:16px 0"><div style="font-size:13.5px;font-weight:600;margin-bottom:10px">各专项成绩</div>' +
+      '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>专项</th><th>得分</th><th>正确率</th><th>答对/答错/未答</th><th>合格标准</th><th>结果</th></tr></thead><tbody>' +
+      rec.subs.map(function (s) {
+        var req = s.passMode === 'percent' ? '100%' : '≥' + (s.passValue || 80) + '%';
+        return '<tr><td><b>' + esc(s.name) + '</b></td><td>' + s.score + '/' + s.total + '</td><td>' + s.rate + '%</td>' +
+          '<td>' + s.right + '/' + s.wrong + '/' + s.blank + '</td><td>' + req + '</td>' +
+          '<td>' + (s.pass ? '<span style="color:var(--green-700);font-weight:700">合格</span>' : '<span style="color:var(--red);font-weight:700">不合格</span>') + '</td></tr>';
+      }).join('') + '</tbody></table></div></div>' : '';
     var html =
       crumb([{ t: '首页', go: 'home' }, { t: rec.ns === 'keypost' ? '关键岗位人员考试' : '日常培训考核', go: rec.ns }, { t: '成绩单' }]) +
       '<div class="score-hero' + (pass ? '' : ' fail') + '">' +
       '<div class="big">' + rec.score + '</div>' +
       '<div class="st">' + (pass ? '合　格' : '不合格') + '</div>' +
       '<div class="meta">' + esc(rec.title) + (rec.category ? ' · ' + esc(rec.category) : '') +
-      '　|　满分 ' + rec.total + ' 分　合格线 ' + rec.passScore + ' 分</div>' +
+      '　|　满分 ' + rec.total + ' 分　' + passLine + '</div>' +
       '<div class="meta">' + esc(rec.who.name) + (rec.who.no ? '（' + esc(rec.who.no) + '）' : '') + '　' + fmtDate(rec.ts) + '</div>' +
       (rec.auto ? '<div class="meta" style="margin-top:8px;background:rgba(0,0,0,.2);display:inline-block;padding:4px 14px;border-radius:99px">' + esc(rec.reason) + '</div>' : '') +
       '</div>' +
       '<div id="reportStatus" class="meta"></div>' +
+      subTable +
       '<div class="sc-grid">' +
       '<div class="sc-box"><b style="color:var(--green-700)">' + rec.right + '</b><span>答对题数</span></div>' +
       '<div class="sc-box"><b style="color:var(--red)">' + rec.wrong + '</b><span>答错题数</span></div>' +
@@ -1256,7 +1300,7 @@
         if (onlyBad && d.ok) return;
         h += '<div class="review-item ' + (d.ok ? 'good' : 'bad') + '">' +
           '<div class="q-meta">' + typeTag(it.t) + '<span class="q-idx">第 ' + it.no + ' 题 · ' + it.score + ' 分</span>' +
-          (it.sub && it.sub !== 'X' ? '<span class="chip gray">科目' + it.sub + '</span>' : '') +
+          (it.sub && it.sub !== 'X' ? '<span class="chip gray">' + esc(it.sub) + '</span>' : '') +
           '<span class="tag ' + (d.ok ? 'ok' : 'no') + '">' + (d.ok ? '正确 +' + d.score : '错误 0') + '</span></div>' +
           '<div class="q-stem" style="font-size:15px;margin-bottom:12px">' + esc(it.q) + '</div>' +
           '<div class="opts">' + it.o.map(function (o, k) {
@@ -1314,7 +1358,7 @@
       '<div class="pp-sub">' + esc(L.Bank.cfg.company) + ' · 考试试卷存档</div>' +
       '<div class="pp-meta">姓名：<b>' + esc(rec.who.name) + '</b>　工号：' + esc(rec.who.no || '—') + '　部门：' + esc(rec.who.dept || '—') +
       '　日期：' + fmtDate(rec.ts) + '　类别：' + esc(rec.category || '—') +
-      '　得分：<b>' + rec.score + '</b>/' + rec.total + '（合格线 ' + rec.passScore + '）　结论：<b>' + (rec.pass ? '合格' : '不合格') + '</b></div></div>' +
+      '　得分：<b>' + rec.score + '</b>/' + rec.total + '（' + (rec.passScore != null ? '合格线 ' + rec.passScore : '各专项均须合格') + '）　结论：<b>' + (rec.pass ? '合格' : '不合格') + '</b></div></div>' +
       sec(1, '一、单项选择题') + sec(2, '二、多项选择题') + sec(3, '三、判断题') +
       '<div class="pp-foot">证明编号：' + esc(rec.id) + '　本试卷由内部培训考核系统自动生成，仅作公司内部培训考核存档使用。</div>' +
       '</div>';
@@ -1338,7 +1382,7 @@
       (rec.who.no ? '（证件/工号：' + esc(rec.who.no) + '）' : '') +
       '于 ' + d.getFullYear() + ' 年 ' + (d.getMonth() + 1) + ' 月 ' + d.getDate() + ' 日参加本公司组织的' +
       '<b>' + esc(rec.title) + '</b>' + (rec.category ? '（科目D 专业类别：' + esc(rec.category) + '）' : '') +
-      '，考试成绩 <b style="color:#0e7a4f;font-size:18px">' + rec.score + '</b> 分（满分 ' + rec.total + ' 分，合格线 ' + rec.passScore + ' 分），' +
+      '，考试成绩 <b style="color:#0e7a4f;font-size:18px">' + rec.score + '</b> 分（满分 ' + rec.total + ' 分，' + (rec.passScore != null ? '合格线 ' + rec.passScore + ' 分' : '各专项均须合格') + '），' +
       '结论为 <b>合格</b>。' +
       '</div>' +
       '<div class="sign"><div>' + esc(cfg.company) + '</div><div>' + d.getFullYear() + ' 年 ' + (d.getMonth() + 1) + ' 月 ' + d.getDate() + ' 日</div></div>' +
