@@ -73,8 +73,28 @@
 
   /* ============ 路由 + 返回导航 ============ */
   var Router = { stack: [], current: null };
+  /* 移动端手势：浏览器「后退手势（左右划屏）」默认拦截为应用内返回，
+     避免误触退出系统；仅当进入登录页（即已点击退出）后才允许真正离开。 */
+  var _exitRequested = false;
+  try { if (!history.state || history.state.ldws !== true) history.pushState({ ldws: true }, ''); } catch (e) {}
+  window.addEventListener('popstate', function () {
+    if (_exitRequested) return;             // 已退出系统：放行浏览器真正离开
+    history.pushState({ ldws: true }, '');  // 重新占位，阻止离开站点
+    if (L.UI.isExamRunning && L.UI.isExamRunning()) {
+      L.UI.confirmBox('退出考试', '<b style="color:var(--red)">考试正在进行中</b>，返回将放弃本场考试且不计成绩。确认返回？', '放弃考试', true)
+        .then(function (v) { if (v) location.reload(); });
+      return;
+    }
+    if (L.UI.adminLoggedIn && L.UI.adminLoggedIn()) {
+      if (L.Admin && L.Admin.enter) L.Admin.enter();
+      return;
+    }
+    var t = navTarget();
+    go(t || 'home');
+  });
   function go(view, params) {
     Router.current = { view: view, params: params || {} };
+    _exitRequested = (view === 'login');    // 进入登录页（含退出后）才允许左右滑真正退出
     Views[view](params || {});
     refreshNav();
   }
