@@ -218,6 +218,7 @@
       '<label class="fld"><span>密码 <b style="color:var(--red)">*</b></span><input type="password" id="aPw" placeholder="请输入密码" autocomplete="current-password"></label>' +
       '<div class="lc-err" id="aErr"></div>' +
       '<button class="btn lg" id="btnAlogin">登　录</button>' +
+      '<div class="lc-tip">管理员账户可在后台「管理员账户」页生成与管理；初始账户 <b>admin</b> / 初始密码 <b>' + esc((L.Bank.cfg && L.Bank.cfg.adminPass) || 'ldws2025') + '</b>，登录后请尽快修改。</div>' +
       '</div>' +
       '<div style="margin-top:16px;font-size:13px;color:var(--ink-400)"><a id="toExaminee" style="cursor:pointer;color:var(--green-800);text-decoration:underline">← 返回考生登录</a></div>' +
       '</div>'
