@@ -84,6 +84,7 @@
     if (!v) return null;
     if (v === 'daily' || v === 'keypost') return 'home';
     if (v === 'dailyPractice' || v === 'dailyExamSetup') return 'daily';
+    if (v === 'dailyDoc') return 'daily';
     if (v === 'kpPractice' || v === 'kpExamSetup') return 'keypost';
     if (v === 'result' || v === 'cert' || v === 'print' || v === 'exam') {
       return (Router.current.params && Router.current.params.ns) || 'home';
@@ -423,12 +424,26 @@
         '<h3>考试模式</h3><p>' + (isKP ? '按大纲规定的岗位题型配比随机组卷，全程计时，切屏超限自动交卷。' : '按后台配置的考试方案随机组卷，计时作答，交卷后出成绩单。') + '</p>' +
         '<div class="feats"><span>随机组题</span><span>倒计时</span><span>切屏监测</span><span>自动阅卷</span></div>' +
         '<div class="go">进入考试 →</div></div>' +
+        (isKP ? '' :
+        '<div class="mod m3" data-go="dailyDoc">' +
+        '<div class="ic"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#b8860b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div>' +
+        '<h3>培训资料</h3><p>湖南绿盾卫士检测技术有限公司培训文件：培训目的、岗位培训总览、考核实施等。</p>' +
+        '<div class="feats"><span>培训目的</span><span>总览表</span><span>考核实施</span></div>' +
+        '<div class="go">查看资料 →</div></div>') +
         '</div>')
     );
     var ta = $('#toAdmin');
     if (ta) ta.onclick = function () { L.Admin.enter(); };
   }
   Views.daily = function () { moduleHome('daily'); };
+  Views.dailyDoc = function () {
+    var doc = (typeof window !== 'undefined' && window.__TRAINING_DOC__) || '<p class="doc-p">培训资料加载失败。</p>';
+    setHTML(
+      crumb([{ t: '首页', go: 'home' }, { t: '日常培训考核', go: 'daily' }, { t: '培训资料' }]) +
+      '<div class="page-hd"><div><h2>培训资料</h2><div class="sub">湖南绿盾卫士检测技术有限公司培训文件</div></div></div>' +
+      '<div class="doc-reader">' + doc + '</div>'
+    );
+  };
   Views.keypost = function () { moduleHome('keypost'); };
 
   /* ============ 刷题：选择题库 ============ */
