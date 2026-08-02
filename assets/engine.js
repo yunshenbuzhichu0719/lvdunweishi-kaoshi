@@ -78,7 +78,19 @@
    *   plan / scoreMap  // custom 时自定义
    *   shuffleOptions:bool
    * }
+   *
+   * 新版岗位方案 plan 格式：
+   * {
+   *   kind:'position', name:'...', position:'...', minutes:120, scoreMap:{1:1,2:1,3:1}, pass:'all',
+   *   subs:[
+   *     { name:'安全专项', passMode:'percent'|'score', pass:100, n:{1:15,2:8,3:7}, ranges:{1:[51,80],2:[136,148],3:[189,208]} }
+   *   ]
+   * }
    */
+  function numId(qid) {
+    return parseInt((qid || '').replace(/^q0*/, '') || '0', 10);
+  }
+
   function buildPaper(spec) {
     var plan, scoreMap, title, minutes;
     if (spec.mode === 'first') {
@@ -97,8 +109,62 @@
       minutes = spec.minutes;
     }
 
-    var pool = spec.pool;   // { A:[q...], B:[...], ... }
+    var pool = spec.pool;   // 旧模式 { A:[q...], ... }；岗位模式为全部题目的数组
     var sections = [], all = [], warn = [];
+
+    // ---------- 岗位模式（多专项，按 id 范围抽题） ----------
+    if (plan && plan.subs && plan.subs.length) {
+      var allQs = Array.isArray(pool) ? pool : (pool.all || []);
+      plan.subs.forEach(function (sub) {
+        var got = [];
+        [1, 2, 3].forEach(function (t) {
+          var n = (sub.n && sub.n[t]) || 0;
+          if (!n) return;
+          var range = (sub.ranges && sub.ranges[t]) || [];
+          var lo = range[0] || 0, hi = range[1] || 0;
+          var cand = allQs.filter(function (q) {
+            return q.t === t && numId(q.id) >= lo && numId(q.id) <= hi;
+          });
+          var sel = pick(cand, n);
+          if (sel.length < n) warn.push(sub.name + ' ' + L.Bank.typeName(t) + ' 题量不足（需 ' + n + ' 题，实有 ' + sel.length + ' 题）');
+          got = got.concat(sel);
+        });
+        if (got.length) sections.push({ subject: sub.name, name: sub.name, count: got.length, meta: sub });
+        got.forEach(function (q) { all.push({ sub: sub.name, q: q }); });
+      });
+
+      // 按专项顺序、专项内按 单选→多选→判断 排列
+      var orderedPos = [];
+      plan.subs.forEach(function (sub) {
+        [1, 2, 3].forEach(function (t) {
+          var g = all.filter(function (x) { return x.sub === sub.name && x.q.t === t; });
+          shuffle(g);
+          orderedPos = orderedPos.concat(g);
+        });
+      });
+
+      var smPos = plan.scoreMap || scoreMap || { 1: 1, 2: 1, 3: 1 };
+      var itemsPos = orderedPos.map(function (x, i) {
+        var q = spec.shuffleOptions ? shuffleOptions(x.q) : x.q;
+        return {
+          no: i + 1, qid: q.id, sub: x.sub, t: q.t, q: q.q, o: q.o, a: q.a,
+          k: q.k || '', e: q.e || '', score: smPos[q.t] || 1, bank: x.q.c || ''
+        };
+      });
+      var totalPos = itemsPos.reduce(function (s, x) { return s + x.score; }, 0);
+      return {
+        title: title, mode: spec.mode, post: spec.post || '', minutes: minutes,
+        items: itemsPos, sections: sections, totalScore: totalPos, warn: warn,
+        planMeta: { kind: 'position', pass: plan.pass, subs: plan.subs, scoreMap: smPos },
+        counts: {
+          1: itemsPos.filter(function (x) { return x.t === 1; }).length,
+          2: itemsPos.filter(function (x) { return x.t === 2; }).length,
+          3: itemsPos.filter(function (x) { return x.t === 3; }).length
+        }
+      };
+    }
+
+    // ---------- 旧模式（按科目/题库抽题） ----------
     Object.keys(plan).forEach(function (sub) {
       var need = plan[sub];
       var qs = pool[sub] || [];
@@ -164,14 +230,53 @@
       detail.push({ no: it.no, qid: it.qid, sub: it.sub, t: it.t, sel: sel, a: it.a, ok: ok, score: sc, full: it.score });
     });
     got = Math.round(got * 10) / 10;
-    return {
+    var res = {
       score: got, total: paper.totalScore, right: right, wrong: wrong, blank: blank,
       detail: detail
     };
+
+    // 岗位模式：按子试卷分项评分并判定整体合格
+    if (paper.planMeta && paper.planMeta.kind === 'position' && paper.planMeta.subs) {
+      var subMap = {};
+      paper.planMeta.subs.forEach(function (s) { subMap[s.name] = s; });
+      var groups = {};
+      paper.items.forEach(function (it) { groups[it.sub] = (groups[it.sub] || []).concat([it]); });
+      var subs = [];
+      Object.keys(groups).forEach(function (name) {
+        var meta = subMap[name] || {};
+        var its = groups[name];
+        var subDetail = detail.filter(function (d) { return d.sub === name; });
+        var sc = subDetail.reduce(function (s, d) { return s + d.score; }, 0);
+        var tot = its.reduce(function (s, it) { return s + it.score; }, 0);
+        var r = subDetail.filter(function (d) { return d.ok; }).length;
+        var w = subDetail.filter(function (d) { return !d.ok && d.sel; }).length;
+        var b = its.length - r - w;
+        var rate = tot > 0 ? Math.round(sc / tot * 1000) / 10 : 0;
+        var pass = false;
+        if (meta.passMode === 'percent') pass = rate >= (meta.pass || 100);
+        else pass = rate >= (meta.pass || 80);
+        subs.push({ name: name, score: sc, total: tot, right: r, wrong: w, blank: b, rate: rate, pass: pass, passMode: meta.passMode, passValue: meta.pass });
+      });
+      res.subs = subs;
+      res.passed = subs.every(function (s) { return s.pass; });
+    } else if (opt.passScore != null) {
+      res.passed = got >= opt.passScore;
+    }
+    return res;
   }
 
   /* ---------- 岗位说明 ---------- */
   function planSummary(plan) {
+    if (plan && plan.subs && plan.subs.length) {
+      return plan.subs.map(function (sub) {
+        var seg = [];
+        if (sub.n && sub.n[1]) seg.push('单选' + sub.n[1]);
+        if (sub.n && sub.n[2]) seg.push('多选' + sub.n[2]);
+        if (sub.n && sub.n[3]) seg.push('判断' + sub.n[3]);
+        var req = sub.passMode === 'percent' ? '须 100% 正确' : '≥' + (sub.pass || 80) + '%';
+        return sub.name + '（' + seg.join('、') + '，' + req + '）';
+      }).join(' / ');
+    }
     return Object.keys(plan).map(function (s) {
       var p = plan[s];
       var seg = [];
