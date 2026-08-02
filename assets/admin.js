@@ -226,13 +226,16 @@
         '<th>方案名称</th><th>题型配比</th><th>满分</th><th>时长</th><th>合格分</th><th>适用题库</th><th style="width:90px">操作</th>' +
         '</tr></thead><tbody>' +
         ((cfg.plans || []).length ? cfg.plans.map(function (p, i) {
-          var full = p.n1 * p.s1 + p.n2 * p.s2 + p.n3 * p.s3;
-          var bn = (p.banks || []).map(function (id) { var m = L.Bank.meta('daily', id); return m ? m.name : '(已删除)'; });
-          return '<tr><td><b>' + esc(p.name) + '</b></td>' +
-            '<td style="font-size:12.5px">单选 ' + p.n1 + '×' + p.s1 + '　多选 ' + p.n2 + '×' + p.s2 + '　判断 ' + p.n3 + '×' + p.s3 + '</td>' +
-            '<td>' + full + '</td><td>' + p.minutes + ' 分钟</td><td>' + p.pass + '</td>' +
-            '<td style="font-size:12.5px;max-width:220px">' + esc(bn.join('、') || '—') + '</td>' +
-            '<td><a style="cursor:pointer" data-ed="' + i + '">编辑</a>　<a style="color:var(--red);cursor:pointer" data-rm="' + i + '">删除</a></td></tr>';
+          var isPos = p.kind === 'position';
+          var full = isPos ? p.subs.reduce(function (s, sub) { return s + (sub.n[1] || 0) + (sub.n[2] || 0) + (sub.n[3] || 0); }, 0) : (p.n1 * p.s1 + p.n2 * p.s2 + p.n3 * p.s3);
+          var ratio = isPos ? L.Engine.planSummary(p) : ('单选 ' + p.n1 + '×' + p.s1 + '　多选 ' + p.n2 + '×' + p.s2 + '　判断 ' + p.n3 + '×' + p.s3);
+          var pass = isPos ? '各专项均须合格' : (p.pass + ' 分');
+          var scope = isPos ? esc(p.position || '—') : esc((p.banks || []).map(function (id) { var m = L.Bank.meta('daily', id); return m ? m.name : '(已删除)'; }).join('、') || '—');
+          return '<tr><td><b>' + esc(p.name) + '</b>' + (isPos ? '<div style="font-size:11.5px;color:var(--ink-400)">岗位方案</div>' : '') + '</td>' +
+            '<td style="font-size:12.5px">' + ratio + '</td>' +
+            '<td>' + full + '</td><td>' + p.minutes + ' 分钟</td><td>' + pass + '</td>' +
+            '<td style="font-size:12.5px;max-width:220px">' + scope + '</td>' +
+            '<td>' + (isPos ? '<span style="color:var(--ink-300)">—</span>' : '<a style="cursor:pointer" data-ed="' + i + '">编辑</a>') + '　<a style="color:var(--red);cursor:pointer" data-rm="' + i + '">删除</a></td></tr>';
         }).join('') : '<tr><td colspan="7" style="text-align:center;color:var(--ink-400);padding:36px">暂无方案</td></tr>') +
         '</tbody></table></div>' +
         '<div style="margin-top:18px;padding-top:16px;border-top:1px solid var(--line-2)">' +
@@ -265,6 +268,7 @@
     function editPlan(idx) {
       var p = idx >= 0 ? JSON.parse(JSON.stringify(cfg.plans[idx])) :
         { name: '', n1: 20, s1: 2, n2: 10, s2: 3, n3: 10, s3: 3, minutes: 60, pass: 60, banks: [] };
+      if (p.kind === 'position') return ui().toast('岗位方案暂不支持在后台编辑，如需调整请联系管理员修改配置', 'err');
       ui().modal({
         title: idx >= 0 ? '编辑考试方案' : '新建考试方案', lock: true,
         html:
