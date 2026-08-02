@@ -218,7 +218,6 @@
       '<label class="fld"><span>密码 <b style="color:var(--red)">*</b></span><input type="password" id="aPw" placeholder="请输入密码" autocomplete="current-password"></label>' +
       '<div class="lc-err" id="aErr"></div>' +
       '<button class="btn lg" id="btnAlogin">登　录</button>' +
-      '<div class="lc-tip">管理员账户可在后台「管理员账户」页生成与管理；初始账户 <b>admin</b> / 初始密码 <b>' + esc((L.Bank.cfg && L.Bank.cfg.adminPass) || 'ldws2025') + '</b>，登录后请尽快修改。</div>' +
       '</div>' +
       '<div style="margin-top:16px;font-size:13px;color:var(--ink-400)"><a id="toExaminee" style="cursor:pointer;color:var(--green-800);text-decoration:underline">← 返回考生登录</a></div>' +
       '</div>'
@@ -291,15 +290,15 @@
       '<div class="lc-tip">通过注册时设置的密保问题验证身份，即可重置密码。</div>' +
       '</div>' +
 
-      // 切换标签（注册 / 忘记密码）置于长条登录按钮正下方
+      // 切换标签（注册 / 忘记密码 / 管理员登录）置于长条登录按钮正下方
       '<div class="lc-tabs">' +
       '<button class="lc-tab" data-tab="reg">注册</button>' +
       '<button class="lc-tab" data-tab="fp">忘记密码</button>' +
+      '<a id="toAdmin" class="lc-tab" style="flex:0 0 auto;color:var(--green-800);text-decoration:none;cursor:pointer">管理员登录 →</a>' +
       '</div>' +
       '<div class="lc-tip">登录后将以该身份参加考试，成绩与答卷记入你的考试档案，可在「后台管理 → 考试记录」中查询、打印存档。</div>' +
 
       '</div>' +
-      '<div style="margin-top:16px;font-size:13px;color:var(--ink-400)"><a id="toAdmin" style="cursor:pointer;color:var(--green-800);text-decoration:underline">管理员登录 →</a></div>' +
       '</div>'
     );
     var toAdmin = document.getElementById('toAdmin');
@@ -905,6 +904,7 @@
     function subReqText(sub) {
       return sub.passMode === 'percent' ? '须 100% 正确' : '≥' + (sub.pass || 80) + '%';
     }
+    function dispName(p) { return (p.name || '').replace('理论考核', ''); }
 
     function render() {
       var pos = posPlans[state.pos];
@@ -929,34 +929,31 @@
         crumb([{ t: '首页', go: 'home' }, { t: '日常培训考核', go: 'daily' }, { t: '考试模式' }]) +
         '<div class="page-hd"><div><h2>日常培训考核 · 考试</h2><div class="sub">选择报考岗位与专项，系统随机组卷；三个专项单独考试、单独计时、单独判定合格</div></div></div>' +
 
+        // 一、考试类型（原 三、选择专项考试）
+        (posPlans.length ?
+          '<div class="card pad" style="margin-bottom:16px"><div style="font-size:13.5px;font-weight:600;margin-bottom:12px">一、考试类型（各专项独立组卷、独立计时、单独判定合格）</div>' +
+          '<div class="grid g3">' + subCards + '</div></div>' : '') +
+
+        // 二、选择报考岗位（去除专项明细大框）
         (posPlans.length ?
           '<div class="card pad" style="margin-bottom:16px">' +
-          '<div style="font-size:13.5px;font-weight:600;margin-bottom:10px">一、选择报考岗位</div>' +
+          '<div style="font-size:13.5px;font-weight:600;margin-bottom:10px">二、选择报考岗位</div>' +
           (posPlans.length > 1 ?
             '<label class="fld" style="max-width:380px"><span>报考岗位</span><select id="selPos">' +
-            posPlans.map(function (p, i) { return '<option value="' + i + '"' + (i === state.pos ? ' selected' : '') + '>' + esc(p.name) + '</option>'; }).join('') +
+            posPlans.map(function (p, i) { return '<option value="' + i + '"' + (i === state.pos ? ' selected' : '') + '>' + esc(dispName(p)) + '</option>'; }).join('') +
             '</select></label>'
-            : '<div style="font-size:14px;font-weight:600">' + esc(pos.name) + '</div>') +
-          (pos ?
-            '<div class="tbl-wrap" style="margin-top:12px"><table class="tbl"><thead><tr><th>专项</th><th>题量</th><th>合格标准</th></tr></thead><tbody>' +
-            pos.subs.map(function (sub) {
-              var n = (sub.n[1] || 0) + (sub.n[2] || 0) + (sub.n[3] || 0);
-              return '<tr><td><b>' + esc(sub.name) + '</b></td><td>' + n + ' 题</td><td>' + subReqText(sub) + '</td></tr>';
-            }).join('') + '</tbody></table></div>' : '') +
+            : '<div style="font-size:14px;font-weight:600">' + esc(dispName(pos)) + '</div>') +
           '</div>' : '') +
 
+        // 三、考生信息（移到最后）
         (posPlans.length ?
-          '<div class="card pad" style="margin-bottom:16px"><div style="font-size:13.5px;font-weight:600;margin-bottom:12px">二、考生信息</div>' +
+          '<div class="card pad" style="margin-bottom:16px"><div style="font-size:13.5px;font-weight:600;margin-bottom:12px">三、考生信息</div>' +
           '<div class="grid g3">' +
           '<label class="fld"><span>姓名<b style="color:var(--red)">*</b></span><input type="text" id="exName" placeholder="请输入姓名" value="' + esc((_session && _session.name) || '') + '"></label>' +
           '<label class="fld"><span>工号</span><input type="text" id="exNo" placeholder="选填" value="' + esc((_session && _session.no) || '') + '"></label>' +
           '<label class="fld"><span>所在部门</span><input type="text" id="exDept" placeholder="选填" value="' + esc((_session && _session.dept) || '') + '"></label>' +
           '</div>' +
           '<div class="warnbox" style="margin-bottom:16px">考试开始后请勿切换窗口；累计切屏 <b>' + cfg.switchLimit + '</b> 次将强制交卷，时间到自动提交。</div></div>' : '') +
-
-        (posPlans.length ?
-          '<div class="card pad"><div style="font-size:13.5px;font-weight:600;margin-bottom:12px">三、选择专项考试（各专项独立组卷、独立计时）</div>' +
-          '<div class="grid g3">' + subCards + '</div></div>' : '') +
 
         (customPlans.length ?
           '<div class="card pad" style="margin-top:16px"><div style="font-size:13.5px;font-weight:600;margin-bottom:12px">其他自定义方案</div>' +
