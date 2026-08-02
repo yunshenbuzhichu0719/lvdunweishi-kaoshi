@@ -132,11 +132,6 @@
     var kpN = kp.reduce(function (s, b) { return s + b.total; }, 0);
     var dN = daily.reduce(function (s, b) { return s + b.total; }, 0);
     setHTML(
-      '<div class="home-tools">' +
-      '<span id="userChipHome" class="chip"></span>' +
-      '<button class="btn ghost sm home-go" id="btnHomeInline">首页</button>' +
-      '</div>' +
-
       '<div class="hero">' +
       '<h1>内部培训考核系统</h1>' +
       '<p>面向公司全员的日常培训考核，以及依据《湖南省检验检测机构关键岗位人员考试大纲（2025年版）》组织的关键岗位人员模拟考试。两套题库完全独立管理，互不混用。</p>' +
@@ -160,24 +155,7 @@
       '</div>' +
       '</div>'
     );
-    // 绑定新按钮与填充用户信息
-    var btnHomeInline = document.getElementById('btnHomeInline');
-    if (btnHomeInline) btnHomeInline.onclick = function () { go('home'); };
-    syncHomeChip();
   };
-
-  function syncHomeChip() {
-    var chip = document.getElementById('userChipHome');
-    if (!chip) return;
-    if (_session) {
-      chip.classList.remove('hidden');
-      var nm = _session.name || '考生';
-      chip.innerHTML = '您好，' + esc(nm) +
-        ' <a id="btnLogoutHome" style="cursor:pointer;margin-left:8px;color:var(--green-900);text-decoration:underline;font-weight:700">退出</a>';
-      var lo = document.getElementById('btnLogoutHome');
-      if (lo) lo.onclick = function () { doLogout(); };
-    } else { chip.classList.add('hidden'); chip.innerHTML = ''; }
-  }
 
   /* ============ 登录（入口门禁） ============ */
   function initSession() {
@@ -194,8 +172,6 @@
       var lo = document.getElementById('btnLogout');
       if (lo) lo.onclick = function () { doLogout(); };
     } else { chip.classList.add('hidden'); chip.innerHTML = ''; }
-    // 同步更新首页内联工具栏
-    syncHomeChip();
   }
   function doLogin(who) {
     _session = who;
