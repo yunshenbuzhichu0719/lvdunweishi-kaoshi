@@ -414,22 +414,22 @@
         :
         '<div class="mods">' +
         '<div class="mod m1" data-go="' + (isKP ? 'kpPractice' : 'dailyPractice') + '">' +
-        '<div class="ic"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#1a6fd4" stroke-width="1.8" stroke-linecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></div>' +
-        '<h3>刷题模式</h3><p>逐题练习，作答后立即显示对错与正确答案，自动收录错题，可随时中断续练。</p>' +
+        '<div class="mod-head"><div class="ic"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#1a6fd4" stroke-width="1.8" stroke-linecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></div><h3>刷题模式</h3><div class="go">开始刷题 →</div></div>' +
+        '<p>逐题练习，作答后立即显示对错与正确答案，自动收录错题，可随时中断续练。</p>' +
         '<div class="feats"><span>顺序/随机</span><span>错题重练</span><span>收藏</span><span>进度记忆</span></div>' +
-        '<div class="go">开始刷题 →</div></div>' +
+        '</div>' +
 
         '<div class="mod m2" data-go="' + (isKP ? 'kpExamSetup' : 'dailyExamSetup') + '">' +
-        '<div class="ic"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0e7a4f" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>' +
-        '<h3>考试模式</h3><p>' + (isKP ? '按大纲规定的岗位题型配比随机组卷，全程计时，切屏超限自动交卷。' : '按后台配置的考试方案随机组卷，计时作答，交卷后出成绩单。') + '</p>' +
+        '<div class="mod-head"><div class="ic"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0e7a4f" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div><h3>考试模式</h3><div class="go">进入考试 →</div></div>' +
+        '<p>' + (isKP ? '按大纲规定的岗位题型配比随机组卷，全程计时，切屏超限自动交卷。' : '选择岗位与专项随机组卷，各专项独立计时作答，交卷后出成绩单。') + '</p>' +
         '<div class="feats"><span>随机组题</span><span>倒计时</span><span>切屏监测</span><span>自动阅卷</span></div>' +
-        '<div class="go">进入考试 →</div></div>' +
+        '</div>' +
         (isKP ? '' :
         '<div class="mod m3" data-go="dailyDoc">' +
-        '<div class="ic"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#b8860b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div>' +
-        '<h3>培训资料</h3><p>湖南绿盾卫士检测技术有限公司培训文件：培训目的、岗位培训总览、考核实施等。</p>' +
+        '<div class="mod-head"><div class="ic"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#b8860b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div><h3>培训资料</h3><div class="go">查看资料 →</div></div>' +
+        '<p>湖南绿盾卫士检测技术有限公司培训文件：培训目的、岗位培训总览、考核实施等。</p>' +
         '<div class="feats"><span>培训目的</span><span>总览表</span><span>考核实施</span></div>' +
-        '<div class="go">查看资料 →</div></div>') +
+        '</div>') +
         '</div>')
     );
     var ta = $('#toAdmin');
@@ -881,109 +881,168 @@
   /* ============ 考试：日常培训 设置 ============ */
   Views.dailyExamSetup = function () {
     var cfg = L.Bank.cfg.daily;
-    var plans = cfg.plans || [];
     var banks = L.Bank.list('daily');
     if (!banks.length) {
       setHTML(crumb([{ t: '首页', go: 'home' }, { t: '日常培训考核', go: 'daily' }, { t: '考试模式' }]) +
         '<div class="card pad empty"><div class="big">尚未上传日常培训题库</div><div>请先在「后台管理 → 日常培训题库」上传题库。</div></div>');
       return;
     }
-    var state = { plan: plans.length ? 0 : -1 };
+    var plans = cfg.plans || [];
+    if (!plans.length) {
+      setHTML(crumb([{ t: '首页', go: 'home' }, { t: '日常培训考核', go: 'daily' }, { t: '考试模式' }]) +
+        '<div class="card pad empty"><div class="big">尚未配置考试方案</div><div>请在「后台管理 → 日常考试方案」中新建方案。</div>' +
+        '<div style="margin-top:16px"><button class="btn" id="toAdmin2">前往后台配置</button></div></div>');
+      return;
+    }
+    var posPlans = plans.filter(function (p) { return p.kind === 'position'; });
+    var customPlans = plans.filter(function (p) { return p.kind !== 'position'; });
+    var state = { pos: posPlans.length ? 0 : -1 };
+
+    function subMinutes(sub) {
+      var n = (sub.n[1] || 0) + (sub.n[2] || 0) + (sub.n[3] || 0);
+      return Math.max(20, Math.round(n * 1.2));
+    }
+    function subReqText(sub) {
+      return sub.passMode === 'percent' ? '须 100% 正确' : '≥' + (sub.pass || 80) + '%';
+    }
 
     function render() {
-      var p = plans[state.plan];
-      var isPos = p && p.kind === 'position';
-      var totalQ = isPos ? p.subs.reduce(function (s, sub) {
-        return s + (sub.n[1] || 0) + (sub.n[2] || 0) + (sub.n[3] || 0);
-      }, 0) : (p ? p.n1 + p.n2 + p.n3 : 0);
+      var pos = posPlans[state.pos];
+
+      var subCards = pos ? pos.subs.map(function (sub, i) {
+        var n = (sub.n[1] || 0) + (sub.n[2] || 0) + (sub.n[3] || 0);
+        return '<div class="pick sub-exam" data-sub="' + i + '">' +
+          '<div class="nm">' + esc(sub.name) + (i === 0 ? ' <span class="chip" style="background:#fdeceb;color:#c0392b;border-color:#f5c6c6">必过</span>' : '') + '</div>' +
+          '<div class="ds">单选 ' + (sub.n[1] || 0) + ' · 多选 ' + (sub.n[2] || 0) + ' · 判断 ' + (sub.n[3] || 0) + '（共 ' + n + ' 题）</div>' +
+          '<div class="qs">时长 ' + subMinutes(sub) + ' 分钟 · 合格：' + subReqText(sub) + '</div>' +
+          '<div class="qs" style="margin-top:6px;color:var(--green-700);font-weight:600">点击进入本专项考试 →</div></div>';
+      }).join('') : '';
+
+      var customCards = customPlans.map(function (p, i) {
+        return '<div class="pick" data-custom="' + i + '">' +
+          '<div class="nm">' + esc(p.name) + '</div>' +
+          '<div class="ds">单选 ' + p.n1 + '×' + p.s1 + ' · 多选 ' + p.n2 + '×' + p.s2 + ' · 判断 ' + p.n3 + '×' + p.s3 + ' 分</div>' +
+          '<div class="qs">时长 ' + p.minutes + ' 分钟 · 合格 ' + p.pass + ' 分</div></div>';
+      }).join('');
 
       setHTML(
         crumb([{ t: '首页', go: 'home' }, { t: '日常培训考核', go: 'daily' }, { t: '考试模式' }]) +
-        '<div class="page-hd"><div><h2>日常培训考核 · 考试</h2><div class="sub">选择后台配置的考试方案，系统随机组卷</div></div></div>' +
-        (plans.length ?
-          '<div class="card pad" style="margin-bottom:16px"><div style="font-size:13.5px;font-weight:600;margin-bottom:10px">一、选择考试方案</div>' +
-          '<div class="grid g2">' + plans.map(function (p, i) {
-            var isPos2 = p.kind === 'position';
-            var tq = isPos2 ? p.subs.reduce(function (s, sub) { return s + (sub.n[1] || 0) + (sub.n[2] || 0) + (sub.n[3] || 0); }, 0) : p.n1 + p.n2 + p.n3;
-            var bn = (p.banks || []).map(function (id) { var m = L.Bank.meta('daily', id); return m ? m.name : '(已删除)'; });
-            return '<div class="pick' + (state.plan === i ? ' on' : '') + '" data-plan="' + i + '">' +
-              '<div class="nm">' + esc(p.name) + (isPos2 ? ' <span class="chip" style="background:#fff7e6;color:#b8860b;border-color:#f0d9a8">岗位</span>' : '') + '</div>' +
-              (isPos2 ?
-                '<div class="ds">' + esc(L.Engine.planSummary(p)) + '</div>' +
-                '<div class="qs">时长 ' + p.minutes + ' 分钟 · 总题量 ' + tq + ' 题 · 各专项均须合格</div>' :
-                '<div class="ds">单选 ' + p.n1 + '×' + p.s1 + '分　多选 ' + p.n2 + '×' + p.s2 + '分　判断 ' + p.n3 + '×' + p.s3 + '分</div>' +
-                '<div class="qs">时长 ' + p.minutes + ' 分钟 · 合格 ' + p.pass + ' 分 · 题库：' + esc(bn.join('、') || '未指定') + '</div>') +
-              '</div>';
-          }).join('') + '</div></div>'
-          :
-          '<div class="card pad empty"><div class="big">尚未配置考试方案</div><div>请在「后台管理 → 日常考试方案」中新建方案。</div>' +
-          '<div style="margin-top:16px"><button class="btn" id="toAdmin2">前往后台配置</button></div></div>') +
+        '<div class="page-hd"><div><h2>日常培训考核 · 考试</h2><div class="sub">选择报考岗位与专项，系统随机组卷；三个专项单独考试、单独计时、单独判定合格</div></div></div>' +
 
-        (isPos ?
-          '<div class="card pad" style="margin-bottom:16px"><div style="font-size:13.5px;font-weight:600;margin-bottom:10px">二、方案详情（须依次达到各专项合格标准）</div>' +
-          '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>专项</th><th>题量</th><th>合格标准</th></tr></thead><tbody>' +
-          p.subs.map(function (sub) {
-            var n = (sub.n[1] || 0) + (sub.n[2] || 0) + (sub.n[3] || 0);
-            var req = sub.passMode === 'percent' ? '100% 正确' : '≥' + (sub.pass || 80) + '%';
-            return '<tr><td><b>' + esc(sub.name) + '</b></td><td>' + n + ' 题</td><td>' + req + '</td></tr>';
-          }).join('') + '</tbody></table></div></div>' : '') +
+        (posPlans.length ?
+          '<div class="card pad" style="margin-bottom:16px">' +
+          '<div style="font-size:13.5px;font-weight:600;margin-bottom:10px">一、选择报考岗位</div>' +
+          (posPlans.length > 1 ?
+            '<label class="fld" style="max-width:380px"><span>报考岗位</span><select id="selPos">' +
+            posPlans.map(function (p, i) { return '<option value="' + i + '"' + (i === state.pos ? ' selected' : '') + '>' + esc(p.name) + '</option>'; }).join('') +
+            '</select></label>'
+            : '<div style="font-size:14px;font-weight:600">' + esc(pos.name) + '</div>') +
+          (pos ?
+            '<div class="tbl-wrap" style="margin-top:12px"><table class="tbl"><thead><tr><th>专项</th><th>题量</th><th>合格标准</th></tr></thead><tbody>' +
+            pos.subs.map(function (sub) {
+              var n = (sub.n[1] || 0) + (sub.n[2] || 0) + (sub.n[3] || 0);
+              return '<tr><td><b>' + esc(sub.name) + '</b></td><td>' + n + ' 题</td><td>' + subReqText(sub) + '</td></tr>';
+            }).join('') + '</tbody></table></div>' : '') +
+          '</div>' : '') +
 
-        (plans.length ?
-          '<div class="card pad"><div style="font-size:13.5px;font-weight:600;margin-bottom:12px">' + (isPos ? '三' : '二') + '、考生信息</div>' +
+        (posPlans.length ?
+          '<div class="card pad" style="margin-bottom:16px"><div style="font-size:13.5px;font-weight:600;margin-bottom:12px">二、考生信息</div>' +
           '<div class="grid g3">' +
           '<label class="fld"><span>姓名<b style="color:var(--red)">*</b></span><input type="text" id="exName" placeholder="请输入姓名" value="' + esc((_session && _session.name) || '') + '"></label>' +
           '<label class="fld"><span>工号</span><input type="text" id="exNo" placeholder="选填" value="' + esc((_session && _session.no) || '') + '"></label>' +
           '<label class="fld"><span>所在部门</span><input type="text" id="exDept" placeholder="选填" value="' + esc((_session && _session.dept) || '') + '"></label>' +
           '</div>' +
-          '<div class="warnbox" style="margin-bottom:16px">考试开始后请勿切换窗口；累计切屏 <b>' + cfg.switchLimit + '</b> 次将强制交卷，时间到自动提交。</div>' +
-          '<div style="text-align:right"><button class="btn lg" id="startExam">开始考试</button></div></div>' : '')
+          '<div class="warnbox" style="margin-bottom:16px">考试开始后请勿切换窗口；累计切屏 <b>' + cfg.switchLimit + '</b> 次将强制交卷，时间到自动提交。</div></div>' : '') +
+
+        (posPlans.length ?
+          '<div class="card pad"><div style="font-size:13.5px;font-weight:600;margin-bottom:12px">三、选择专项考试（各专项独立组卷、独立计时）</div>' +
+          '<div class="grid g3">' + subCards + '</div></div>' : '') +
+
+        (customPlans.length ?
+          '<div class="card pad" style="margin-top:16px"><div style="font-size:13.5px;font-weight:600;margin-bottom:12px">其他自定义方案</div>' +
+          '<div class="grid g2">' + customCards + '</div></div>' : '')
       );
-      $$('[data-plan]').forEach(function (el) { el.onclick = function () { state.plan = +el.getAttribute('data-plan'); render(); }; });
+
+      var sp = $('#selPos');
+      if (sp) sp.onchange = function () { state.pos = +sp.value; render(); };
+      $$('[data-sub]').forEach(function (el) {
+        el.onclick = function () {
+          var name = ($('#exName').value || '').trim();
+          if (!name) { toast('请先填写考生姓名', 'err'); if ($('#exName')) $('#exName').focus(); return; }
+          var idx = +el.getAttribute('data-sub');
+          var pos = posPlans[state.pos];
+          startDailySubExam(pos, pos.subs[idx], {
+            name: name, no: ($('#exNo').value || '').trim(), dept: ($('#exDept').value || '').trim()
+          }, cfg);
+        };
+      });
+      $$('[data-custom]').forEach(function (el) {
+        el.onclick = function () {
+          var name = ($('#exName').value || '').trim();
+          if (!name) { toast('请先填写考生姓名', 'err'); if ($('#exName')) $('#exName').focus(); return; }
+          var p = customPlans[+el.getAttribute('data-custom')];
+          startDailyCustomExam(p, {
+            name: name, no: ($('#exNo').value || '').trim(), dept: ($('#exDept').value || '').trim()
+          }, cfg);
+        };
+      });
       var t2 = $('#toAdmin2'); if (t2) t2.onclick = function () { L.Admin.enter('dailyPlan'); };
-      var se = $('#startExam');
-      if (se) se.onclick = function () {
-        var name = ($('#exName').value || '').trim();
-        if (!name) return toast('请填写姓名', 'err');
-        if (state.plan < 0) return toast('请选择考试方案', 'err');
-        var p = plans[state.plan];
-        var isPos2 = p.kind === 'position';
-        var qids = isPos2 ? ['D1'] : (p.banks || []);
-        L.Bank.questionsOf(qids).then(function (qs) {
-          var paper;
-          if (isPos2) {
-            paper = L.Engine.buildPaper({
-              mode: 'custom', title: p.name, minutes: p.minutes,
-              plan: p, pool: qs, shuffleOptions: cfg.shuffleOptions
-            });
-          } else {
-            paper = L.Engine.buildPaper({
-              mode: 'custom', title: p.name, minutes: p.minutes,
-              plan: { X: { 1: p.n1, 2: p.n2, 3: p.n3 } },
-              scoreMap: { 1: p.s1, 2: p.s2, 3: p.s3 },
-              pool: { X: qs }, shuffleOptions: cfg.shuffleOptions
-            });
-            paper.passScore = p.pass;
-          }
-          var examCfg = { switchLimit: cfg.switchLimit, antiCopy: cfg.antiCopy };
-          if (!isPos2) examCfg.passScore = p.pass;
-          var run = function () {
-            startExam('daily', paper, { name: name, no: ($('#exNo').value || '').trim(), dept: ($('#exDept').value || '').trim() }, examCfg);
-          };
-          if (paper.warn.length) {
-            modal({
-              title: '题量提示', lock: true,
-              html: '<div style="color:var(--amber)">题库题量不足，已按实际数量组卷：</div><ul style="margin:8px 0 0;padding-left:20px">' +
-                paper.warn.map(function (w) { return '<li>' + esc(w.replace('科目X ', '').replace('安全专项 ', '').replace('通用基础 ', '').replace('采样专项 ', '').replace('检测专项 ', '').replace('报告专项 ', '')) + '</li>'; }).join('') + '</ul>',
-              buttons: [{ text: '返回', value: false }, { text: '仍然开始', primary: true, value: true }]
-            }).then(function (v) { if (v) run(); });
-          } else run();
-        });
-      };
     }
+
+    function startDailySubExam(pos, sub, who, cfg) {
+      L.Bank.questionsOf(['D1']).then(function (qs) {
+        var plan = { kind: 'position', name: sub.name, subs: [sub], scoreMap: pos.scoreMap || { 1: 1, 2: 1, 3: 1 }, pass: 'all' };
+        var paper = L.Engine.buildPaper({
+          mode: 'custom', title: pos.position + ' · ' + sub.name, minutes: subMinutes(sub),
+          plan: plan, pool: qs, shuffleOptions: cfg.shuffleOptions
+        });
+        var examCfg = { switchLimit: cfg.switchLimit, antiCopy: cfg.antiCopy };
+        var run = function () { startExam('daily', paper, who, examCfg); };
+        if (paper.warn.length) {
+          modal({
+            title: '题量提示', lock: true,
+            html: '<div style="color:var(--amber)">题库题量不足，已按实际数量组卷：</div><ul style="margin:8px 0 0;padding-left:20px">' +
+              paper.warn.map(function (w) { return '<li>' + esc(w) + '</li>'; }).join('') + '</ul>',
+            buttons: [{ text: '返回', value: false }, { text: '仍然开始', primary: true, value: true }]
+          }).then(function (v) { if (v) run(); });
+        } else run();
+      });
+    }
+
+    function startDailyCustomExam(p, who, cfg) {
+      L.Bank.questionsOf(p.banks || []).then(function (qs) {
+        var paper = L.Engine.buildPaper({
+          mode: 'custom', title: p.name, minutes: p.minutes,
+          plan: { X: { 1: p.n1, 2: p.n2, 3: p.n3 } },
+          scoreMap: { 1: p.s1, 2: p.s2, 3: p.s3 }, pool: { X: qs }, shuffleOptions: cfg.shuffleOptions
+        });
+        paper.passScore = p.pass;
+        var examCfg = { switchLimit: cfg.switchLimit, antiCopy: cfg.antiCopy, passScore: p.pass };
+        var run = function () { startExam('daily', paper, who, examCfg); };
+        if (paper.warn.length) {
+          modal({
+            title: '题量提示', lock: true,
+            html: '<div style="color:var(--amber)">题库题量不足，已按实际数量组卷：</div><ul style="margin:8px 0 0;padding-left:20px">' +
+              paper.warn.map(function (w) { return '<li>' + esc(w.replace('科目X ', '')) + '</li>'; }).join('') + '</ul>',
+            buttons: [{ text: '返回', value: false }, { text: '仍然开始', primary: true, value: true }]
+          }).then(function (v) { if (v) run(); });
+        } else run();
+      });
+    }
+
     render();
   };
 
   /* ============ 考试主界面 ============ */
+  function examReqText(p, cfg) {
+    if (cfg && cfg.passScore != null) return '合格 ' + cfg.passScore + ' 分';
+    if (p && p.planMeta && p.planMeta.subs && p.planMeta.subs.length) {
+      return p.planMeta.subs.map(function (s) {
+        return s.name + (s.passMode === 'percent' ? ' 须 100% 正确' : ' ≥' + (s.pass || 80) + '%');
+      }).join('；');
+    }
+    return '各专项均须合格';
+  }
   var E = null;
   function startExam(ns, paper, who, cfg) {
     E = {
@@ -1059,7 +1118,7 @@
       '<div class="page-hd" style="margin-bottom:14px"><div><h2>' + esc(p.title) + '</h2>' +
       '<div class="sub">考生：<b>' + esc(E.who.name) + '</b>' + (E.who.dept ? ' · ' + esc(E.who.dept) : '') +
       (p.category ? ' · 科目D：' + esc(p.category) : '') +
-      ' · 满分 ' + p.totalScore + ' 分 · ' + (E.cfg.passScore != null ? '合格 ' + E.cfg.passScore + ' 分' : '各专项均须合格') + '</div></div>' +
+      ' · 满分 ' + p.totalScore + ' 分 · ' + examReqText(p, E.cfg) + '</div></div>' +
       '<span class="chip gray">单选 ' + p.counts[1] + ' · 多选 ' + p.counts[2] + ' · 判断 ' + p.counts[3] + '</span></div>' +
       '<div class="quiz-wrap">' +
       '<div class="quiz-main" id="qmain"></div>' +
@@ -1077,10 +1136,13 @@
   function drawEQ() {
     var p = E.paper, it = p.items[E.i];
     var sel = E.ans[E.i] || [];
+    var curNo = 1;
+    for (var k = 0; k < E.i; k++) { if (p.items[k].t === it.t) curNo++; }
+    var typeTotal = p.items.filter(function (x) { return x.t === it.t; }).length;
     var html =
       '<div class="q-meta">' + typeTag(it.t) +
-      '<span class="q-idx">第 ' + (E.i + 1) + ' / ' + p.items.length + ' 题（' + it.score + ' 分）</span>' +
-      (it.sub && it.sub !== 'X' ? '<span class="chip gray">科目' + it.sub + '</span>' : '') +
+      '<span class="q-idx">第 ' + curNo + ' / ' + typeTotal + ' 题（' + it.score + ' 分）</span>' +
+      (it.sub ? (it.sub.length <= 1 ? '<span class="chip gray">科目' + it.sub + '</span>' : '<span class="chip gray">' + it.sub + '</span>') : '') +
       (E.mark[E.i] ? '<span class="tag t3">已标记</span>' : '') +
       '</div>' +
       '<div class="q-stem">' + esc(it.q) + '</div>' +
@@ -1127,13 +1189,15 @@
       var idxs = [];
       p.items.forEach(function (it, i) { if (it.t === g.t) idxs.push(i); });
       if (!idxs.length) return;
+      var cnt = 0;
       html += '<div class="grp"><div class="lbl">' + g.n + '（' + idxs.length + ' 题）</div><div class="nums">' +
         idxs.map(function (i) {
+          cnt++;
           var cls = [];
           if ((E.ans[i] || []).length) { cls.push('done'); }
           if (E.mark[i]) cls.push('mark');
           if (i === E.i) cls.push('cur');
-          return '<b class="' + cls.join(' ') + '" data-i="' + i + '">' + (i + 1) + '</b>';
+          return '<b class="' + cls.join(' ') + '" data-i="' + i + '">' + cnt + '</b>';
         }).join('') + '</div></div>';
     });
     p.items.forEach(function (it, i) { if ((E.ans[i] || []).length) done++; });
@@ -1255,7 +1319,11 @@
   /* ============ 成绩单 ============ */
   function showResult(rec) {
     var pass = rec.pass;
-    var passLine = (rec.subs && rec.subs.length) ? '各专项均须合格' : '合格线 ' + (rec.passScore != null ? rec.passScore : '—') + ' 分';
+    var passLine = (rec.passScore != null)
+      ? ('合格线 ' + rec.passScore + ' 分')
+      : (rec.subs && rec.subs.length ? rec.subs.map(function (s) {
+          return s.name + (s.passMode === 'percent' ? ' 须 100% 正确' : ' ≥' + (s.passValue || 80) + '%');
+        }).join('；') : '—');
     var subTable = (rec.subs && rec.subs.length) ?
       '<div class="card pad" style="margin:16px 0"><div style="font-size:13.5px;font-weight:600;margin-bottom:10px">各专项成绩</div>' +
       '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>专项</th><th>得分</th><th>正确率</th><th>答对/答错/未答</th><th>合格标准</th><th>结果</th></tr></thead><tbody>' +
