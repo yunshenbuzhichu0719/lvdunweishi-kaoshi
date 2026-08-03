@@ -515,6 +515,7 @@
       '<label class="fld" style="width:170px;margin:0"><span>练习顺序</span><select id="order"><option value="seq">顺序练习</option><option value="rand">随机练习</option></select></label>' +
       '<label class="fld" style="width:170px;margin:0"><span>题型范围</span><select id="ftype"><option value="0">全部题型</option><option value="1">仅单选题</option><option value="2">仅多选题</option><option value="3">仅判断题</option></select></label>' +
       '<label class="fld" style="width:190px;margin:0"><span>练习范围</span><select id="scope"><option value="all">全部题目</option><option value="wrong">仅错题本</option><option value="fav">仅收藏题</option></select></label>' +
+      '<label class="fld" style="width:140px;margin:0"><span>练习数量</span><select id="qnum"><option value="10">10题</option><option value="20">20题</option><option value="30">30题</option><option value="40" selected>40题</option></select></label>' +
       '<label style="display:flex;align-items:center;gap:7px;font-size:13.5px;margin-bottom:2px"><input type="checkbox" id="shufOpt" style="width:auto"> 选项乱序</label>' +
       '<div style="flex:1"></div>' +
       '<button class="btn lg" id="startPractice">开始练习</button>' +
@@ -541,7 +542,7 @@
       if (!ids.length) return toast('请至少选择一个题库', 'err');
       startPractice(ns, ids, {
         order: $('#order').value, ftype: +$('#ftype').value,
-        scope: $('#scope').value, shuffleOpt: $('#shufOpt').checked
+        scope: $('#scope').value, limit: $('#qnum').value, shuffleOpt: $('#shufOpt').checked
       });
     };
   }
@@ -564,6 +565,10 @@
       if (!qs.length) return toast(opt.scope === 'wrong' ? '错题本为空' : (opt.scope === 'fav' ? '暂无收藏题目' : '没有符合条件的题目'), 'err');
       if (opt.order === 'rand') L.Engine.shuffle(qs);
       if (opt.shuffleOpt) qs = qs.map(L.Engine.shuffleOptions);
+      if (opt.limit) {
+        var _n = parseInt(opt.limit, 10) || 0;
+        if (_n > 0 && qs.length > _n) qs = qs.slice(0, _n);
+      }
 
       P = {
         ns: ns, ids: bankIds, key: 'prog:' + ns + ':' + L.hash(bankIds.slice().sort().join(',')),
