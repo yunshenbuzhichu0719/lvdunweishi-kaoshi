@@ -15,7 +15,7 @@
   --font:"PingFang SC","Microsoft YaHei","Hiragino Sans GB","Source Han Sans SC",system-ui,-apple-system,"Segoe UI",sans-serif;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;padding:0}
+html,body{margin:0;padding:0;overscroll-behavior-x:contain}
 body{
   font-family:var(--font); background:var(--bg); color:var(--ink-800);
   font-size:14.5px; line-height:1.65; -webkit-font-smoothing:antialiased;
@@ -124,6 +124,12 @@ table.tbl tr:hover td{background:#fafcfb}
 .mod .ic{width:46px;height:46px;border-radius:12px;display:grid;place-items:center;margin-bottom:14px}
 .mod.m1 .ic{background:var(--blue-bg)}
 .mod.m2 .ic{background:var(--green-050)}
+.mod-head{
+  display:flex;align-items:center;gap:8px;margin-bottom:14px;
+}
+.mod-head .ic{margin-bottom:0;flex:0 0 auto}
+.mod-head h3{margin:0;font-size:18px;color:var(--ink-900);flex:1 1 auto;min-width:0}
+.mod-head .go{flex:0 0 auto;color:var(--green-800);font-weight:600;font-size:13.5px;white-space:nowrap}
 .mod h3{margin:0 0 6px;font-size:18px;color:var(--ink-900)}
 .mod p{margin:0 0 16px;color:var(--ink-600);font-size:13px;min-height:40px}
 .mod .feats{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
@@ -151,6 +157,12 @@ table.tbl tr:hover td{background:#fafcfb}
 .pick .nm{font-weight:600;color:var(--ink-900);margin-bottom:4px;font-size:14.5px}
 .pick .ds{font-size:12.5px;color:var(--ink-400)}
 .pick .qs{margin-top:8px;font-size:12px;color:var(--ink-600)}
+/* 考试类型专项卡片：名称与「点击进入」同行右对齐，整体更紧凑 */
+.sub-exam{padding:12px 14px}
+.sub-exam .nm{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:3px}
+.sub-exam .nm .enter{color:var(--green-700);font-weight:600;white-space:nowrap;font-size:12.5px}
+.sub-exam .ds{margin-top:2px}
+.sub-exam .qs{margin-top:4px}
 
 .empty{text-align:center;padding:60px 20px;color:var(--ink-400)}
 .empty .big{font-size:15px;color:var(--ink-600);margin-bottom:6px;font-weight:600}
@@ -352,8 +364,10 @@ table.tbl tr:hover td{background:#fafcfb}
   .tb-title{min-width:0}
   .tb-title .t1{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:calc(100vw - 24px);line-height:1.2}
   .tb-title .t2{display:none}
-  .tb-right{flex:0 0 auto;justify-content:flex-end;gap:5px;margin-top:0}
-  #userChip{max-width:calc(100vw - 180px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tb-right{flex:1 1 100%;justify-content:flex-end;gap:5px;margin-top:0}
+  #userChip{max-width:calc(100vw - 180px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px;padding:2px 9px;gap:4px}
+  #userChip a{font-size:11px;margin-left:4px !important}
+  .tb-right .btn.sm, #btnHome{font-size:11.5px;padding:4px 9px}
 
   .hero{padding:14px 14px 16px;margin-bottom:14px;border-radius:12px}
   .hero:after,.hero:before{display:none}
@@ -367,6 +381,9 @@ table.tbl tr:hover td{background:#fafcfb}
   .mod p{font-size:12.5px;min-height:0;margin-bottom:12px}
   .mod .ic{width:38px;height:38px;margin-bottom:10px}
   .mod .feats{margin-bottom:12px}
+  .mod-head .ic{width:34px;height:34px}
+  .mod-head h3{font-size:15.5px}
+  .mod-head .go{font-size:13px}
 
   .login-wrap{padding:12px 12px 20px;min-height:auto}
   .login-card{padding:22px 18px;border-radius:14px}
@@ -378,4 +395,24 @@ table.tbl tr:hover td{background:#fafcfb}
   .login-card .lc-tip{padding:8px 10px;margin-top:12px;font-size:11.5px}
   .lc-tabs{margin-top:12px}
   .lc-tab{padding:7px 0;font-size:12.5px}
+}
+
+/* ============ 培训资料文档展示 ============ */
+.doc-reader{max-width:920px;margin:0 auto;background:#fff;border:1px solid var(--green-100);border-radius:14px;padding:28px 34px;line-height:1.8;color:#243b33}
+.doc-title{font-size:22px;color:var(--green-900);text-align:center;margin:0 0 22px;font-weight:800;line-height:1.4}
+.doc-part{font-size:18px;font-weight:800;color:#0e7a4f;margin:30px 0 12px;padding-bottom:8px;border-bottom:2px solid var(--green-100)}
+.doc-h2{font-size:15.5px;font-weight:700;color:#1a6fd4;margin:20px 0 8px}
+.doc-p{font-size:14px;margin:0 0 10px;text-align:justify;color:#33433c}
+.doc-tbl-wrap{overflow-x:auto;margin:14px 0;-webkit-overflow-scrolling:touch}
+.doc-tbl{border-collapse:collapse;width:100%;font-size:13px}
+.doc-tbl td{border:1px solid #d4e3da;padding:7px 10px;vertical-align:top;line-height:1.5}
+.doc-tbl tr:first-child td{background:var(--green-050);font-weight:700;color:var(--green-900)}
+.mod.m3 .go{color:#b8860b}
+.mod.m3:hover{border-color:#e0b84a}
+@media (max-width:600px){
+  .doc-reader{padding:18px 15px;border-radius:10px}
+  .doc-title{font-size:19px;margin-bottom:16px}
+  .doc-part{font-size:16px;margin:24px 0 10px}
+  .doc-p{font-size:13.5px}
+  .doc-h2{font-size:15px}
 }

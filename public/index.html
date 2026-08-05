@@ -7,14 +7,16 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="绿盾卫士">
-<title>绿盾卫士培训考核 · 云版</title>
+<title>湖南绿盾卫士检测技术有限公司 · 内部培训考核系统</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="icon" href="icon-192.png" type="image/png">
 <link rel="stylesheet" href="assets/app.css">
 </head>
 <body>
+
 <div id="app">
+  <!-- ============ 顶栏 ============ -->
   <header id="topbar">
     <div class="tb-left">
       <div class="logo">
@@ -26,32 +28,46 @@
       </div>
       <div class="tb-title">
         <div class="t1">湖南绿盾卫士检测技术有限公司</div>
-        <div class="t2">内部培训考核系统 · 云版</div>
+        <div class="t2">内部培训考核系统</div>
       </div>
     </div>
     <div class="tb-right">
       <span id="userChip" class="chip hidden"></span>
-      <button class="btn ghost sm hidden" id="btnBack" title="返回">返回</button>
+      <button class="btn ghost sm hidden" id="btnBack" title="返回">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px"><path d="M15 18l-6-6 6-6"/></svg>返回
+      </button>
       <button class="btn ghost sm" id="btnHome">首页</button>
     </div>
   </header>
 
   <main id="main"></main>
 
-  <footer id="footer"><span>© 湖南绿盾卫士检测技术有限公司 · 培训考核系统（云端集中记录版）</span></footer>
+  <footer id="footer">
+    <span>© 湖南绿盾卫士检测技术有限公司 · 内部培训考核系统</span>
+  </footer>
 </div>
 
-<div id="modalMask" class="mask hidden"><div class="modal" id="modalBox">
-  <div class="modal-hd" id="modalTitle">提示</div>
-  <div class="modal-bd" id="modalBody"></div>
-  <div class="modal-ft" id="modalFoot"></div>
-</div></div>
+<!-- ============ 全局弹窗 ============ -->
+<div id="modalMask" class="mask hidden">
+  <div class="modal" id="modalBox">
+    <div class="modal-hd" id="modalTitle">提示</div>
+    <div class="modal-bd" id="modalBody"></div>
+    <div class="modal-ft" id="modalFoot"></div>
+  </div>
+</div>
+
 <div id="toast" class="toast hidden"></div>
 
+<script src="assets/xlsx.full.min.js"></script>
 <script src="data/bank-keypost.js"></script>
+<script src="data/bank-daily.js"></script>
+<script src="data/docs-training.js"></script>
 <script src="assets/store.js"></script>
+<script src="assets/cloud-api.js"></script>
+<script src="assets/auth.js"></script>
 <script src="assets/engine.js"></script>
-<script src="assets/cloud.js"></script>
+<script src="assets/ui.js"></script>
+<script src="assets/admin.js"></script>
 <script src="assets/main.js"></script>
 </body>
 </html>
