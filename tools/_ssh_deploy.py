@@ -4,7 +4,9 @@ HOST = os.environ.get('LDWS_HOST', '43.226.38.94')
 PORT = int(os.environ.get('LDWS_PORT', '22'))
 USER = os.environ.get('LDWS_USER', 'root')
 PASS = os.environ.get('LDWS_PASS', '')
-PROJECT = r'C:/Users/ydyyf/WorkBuddy/Claw/绿盾卫士云版'
+# 项目根目录 = 本脚本所在 tools/ 的上级（自动识别，跨电脑无需改路径）
+HERE = os.path.dirname(os.path.abspath(__file__))
+PROJECT = os.path.dirname(HERE)
 
 # Clean data-store.json (only keep admin, no test users/records)
 CLEAN_DATA = json.dumps({
