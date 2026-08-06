@@ -93,6 +93,7 @@
     go(t || 'home');
   });
   function go(view, params) {
+    try { stopAuthPoll(); } catch (e) { }
     Router.current = { view: view, params: params || {} };
     _exitRequested = (view === 'login');    // 进入登录页（含退出后）才允许左右滑真正退出
     Views[view](params || {});
@@ -1516,6 +1517,214 @@
     _deep = null;
     return false;
   }
+
+  /* ===========================================================
+   *  日常培训考核 · 授权码门禁
+   * =========================================================== */
+  var _authPoll = null;
+
+  function stopAuthPoll() { if (_authPoll) { clearInterval(_authPoll); _authPoll = null; } }
+
+  function copyText(txt) {
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        return navigator.clipboard.writeText(txt).then(function () { return true; }, function () { return fallback(); });
+      }
+    } catch (e) { }
+    return Promise.resolve(fallback());
+    function fallback() {
+      try {
+        var ta = document.createElement('textarea');
+        ta.value = txt; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select();
+        var ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+        return ok;
+      } catch (e) { return false; }
+    }
+  }
+
+  /* ---- 授权弹窗 ---- */
+  function openAuthModal(onPass) {
+    var A = L.Auth;
+    var s = _session || {};
+    var tab = 'code';
+    var reqCode = '';
+
+    function idRow() {
+      return '<div style="background:var(--green-050);border:1px solid var(--green-100);border-radius:10px;padding:11px 13px;margin:0 0 14px;font-size:13px;line-height:1.7">' +
+        '当前身份：<b style="color:var(--green-800)">' + esc(s.name || '未登录') + '</b>' +
+        (s.user ? ' （账号 ' + esc(s.user) + '）' : '') +
+        (s.no ? ' · 工号 ' + esc(s.no) : '') + (s.dept ? ' · ' + esc(s.dept) : '') +
+        '<div style="margin-top:2px;color:var(--ink-400);font-size:12.5px">授权码与账号绑定，请确保以本人账号登录。</div></div>';
+    }
+
+    function body() {
+      return idRow() +
+        '<div class="lc-tabs" style="margin:0 0 14px">' +
+        '<button class="lc-tab ' + (tab === 'code' ? 'on' : '') + '" data-atab="code">输入授权码</button>' +
+        '<button class="lc-tab ' + (tab === 'req' ? 'on' : '') + '" data-atab="req">申请授权码</button>' +
+        '</div>' +
+
+        '<div id="apCode" class="' + (tab === 'code' ? '' : 'hidden') + '">' +
+        '<label class="fld" style="margin:0"><span>授权码 <b style="color:var(--red)">*</b></span>' +
+        '<input type="text" id="apInput" placeholder="LD-XXXX-XXXX-XXXX" style="letter-spacing:2px;text-transform:uppercase;font-family:Consolas,Menlo,monospace"></label>' +
+        '<div class="lc-err" id="apErr" style="min-height:18px"></div>' +
+        '<div style="font-size:12.5px;color:var(--ink-400);line-height:1.7">授权码由管理员在「后台管理 → 日常授权管理」中生成，含有效期，到期后需重新申请。</div>' +
+        '</div>' +
+
+        '<div id="apReq" class="' + (tab === 'req' ? '' : 'hidden') + '">' +
+        '<div id="apReqForm">' +
+        '<label class="fld" style="margin:0"><span>申请事由（选填）</span>' +
+        '<input type="text" id="apNote" placeholder="如：参加 2026 年度安全培训考核"></label>' +
+        '<div style="margin-top:10px"><button class="btn" id="apSubmit">提交授权申请</button></div>' +
+        '<div style="margin-top:10px;font-size:12.5px;color:var(--ink-400);line-height:1.7">' +
+        '提交后管理员可在后台看到你的申请并生成授权码。若你与管理员不在同一台电脑，请把生成的「申请码」发给管理员。</div>' +
+        '</div>' +
+        '<div id="apReqDone" class="hidden">' +
+        '<div class="judgebar ok" style="margin:0 0 12px">申请已提交，正在等待管理员授权…<span id="apWait" style="color:var(--ink-400)"></span></div>' +
+        '<label class="fld" style="margin:0"><span>申请码（发给管理员）</span>' +
+        '<textarea id="apReqCode" readonly rows="3" style="width:100%;font-family:Consolas,Menlo,monospace;font-size:12px;word-break:break-all;padding:10px;border:1px solid var(--line);border-radius:8px;resize:vertical"></textarea></label>' +
+        '<div style="display:flex;gap:8px;margin-top:8px">' +
+        '<button class="btn sm" id="apCopy">复制申请码</button>' +
+        '<button class="btn ghost sm" id="apAgain">重新提交</button></div>' +
+        '<div style="margin-top:10px;font-size:12.5px;color:var(--ink-400);line-height:1.7">' +
+        '管理员授权后：若在同一台电脑上，本页会<b>自动放行</b>；若在其他设备，请把管理员回复的授权码填入「输入授权码」。</div>' +
+        '</div>' +
+        '</div>';
+    }
+
+    function bind() {
+      $$('[data-atab]').forEach(function (b) {
+        b.onclick = function () {
+          tab = b.getAttribute('data-atab');
+          $$('[data-atab]').forEach(function (x) { x.classList.toggle('on', x.getAttribute('data-atab') === tab); });
+          $('#apCode').classList.toggle('hidden', tab !== 'code');
+          $('#apReq').classList.toggle('hidden', tab !== 'req');
+          $('#apOk').classList.toggle('hidden', tab !== 'code');
+        };
+      });
+      var inp = $('#apInput');
+      if (inp) {
+        inp.oninput = function () {
+          var v = A.normalize(inp.value);
+          if (v.length > 12) v = v.slice(0, 12);
+          inp.value = v.replace(/(.{4})(?=.)/g, '$1-');
+          $('#apErr').textContent = '';
+        };
+        inp.onkeydown = function (e) { if (e.key === 'Enter') doVerify(); };
+        setTimeout(function () { try { inp.focus(); } catch (e) { } }, 60);
+      }
+      var sb = $('#apSubmit');
+      if (sb) sb.onclick = doApply;
+      var ag = $('#apAgain');
+      if (ag) ag.onclick = function () {
+        $('#apReqForm').classList.remove('hidden');
+        $('#apReqDone').classList.add('hidden');
+      };
+      var cp = $('#apCopy');
+      if (cp) cp.onclick = function () {
+        copyText(reqCode).then(function (ok) { toast(ok ? '申请码已复制，请发给管理员' : '复制失败，请手动全选复制', ok ? 'ok' : 'err'); });
+      };
+    }
+
+    function doVerify() {
+      var v = ($('#apInput').value || '').trim();
+      if (!v) { $('#apErr').textContent = '请输入授权码'; return; }
+      A.redeem(v).then(function (r) {
+        if (!r.ok) { $('#apErr').textContent = r.msg || '授权码无效'; return; }
+        closeAuth();
+        toast('授权成功，有效期至 ' + A.fmtDay(r.expireAt), 'ok');
+        onPass();
+      });
+    }
+
+    function doApply() {
+      if (!_session) { toast('请先登录后再申请', 'err'); return; }
+      var note = ($('#apNote') && $('#apNote').value || '').trim();
+      A.apply(note).then(function (r) {
+        reqCode = r.code;
+        $('#apReqForm').classList.add('hidden');
+        $('#apReqDone').classList.remove('hidden');
+        $('#apReqCode').value = reqCode;
+        toast('申请已提交', 'ok');
+      });
+    }
+
+    /* 自动检测：同机后台授权后立即放行 */
+    stopAuthPoll();
+    var tick = 0;
+    _authPoll = setInterval(function () {
+      tick++;
+      var w = $('#apWait');
+      if (w) w.textContent = '（已等待 ' + tick * 3 + ' 秒）';
+      A.check().then(function (r) {
+        if (r.ok) {
+          closeAuth();
+          toast('管理员已授权，正在进入…', 'ok');
+          onPass();
+        }
+      });
+    }, 3000);
+
+    function closeAuth() {
+      stopAuthPoll();
+      $('#modalMask').classList.add('hidden');
+      $('#modalMask').onclick = null;
+    }
+
+    $('#modalTitle').textContent = '日常培训考核 · 授权访问';
+    $('#modalBody').innerHTML = body();
+    $('#modalFoot').innerHTML =
+      '<button class="btn ghost" id="apCancel">返回首页</button>' +
+      '<button class="btn" id="apOk">验证并进入</button>';
+    $('#modalMask').classList.remove('hidden');
+    $('#modalMask').onclick = null;   // 授权弹窗不允许点遮罩关闭
+    bind();
+    $('#apCancel').onclick = function () { closeAuth(); go('home'); };
+    $('#apOk').onclick = doVerify;
+  }
+
+  /* ---- 门禁页 ---- */
+  function authGatePage(reason, msg, onPass) {
+    var tips = {
+      revoked: '您的授权已被管理员撤销。',
+      expired: '您的授权码已过期。',
+      user: '本机保存的授权码与当前登录账号不符。',
+      sign: '本机保存的授权码无效。'
+    };
+    setHTML(
+      crumb([{ t: '首页', go: 'home' }, { t: '日常培训考核' }]) +
+      '<div class="page-hd"><div><h2>日常培训考核</h2>' +
+      '<div class="sub">本模块已启用授权码访问控制</div></div>' +
+      '<span class="chip gray">需要授权</span></div>' +
+      '<div class="card pad empty">' +
+      '<div style="margin-bottom:14px"><svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="#c8931f" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' +
+      '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>' +
+      '<div class="big">该模块需要授权码才能进入</div>' +
+      '<div>' + esc(msg || tips[reason] || '请输入管理员下发的授权码，或在线提交授权申请。') + '</div>' +
+      '<div style="margin-top:20px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">' +
+      '<button class="btn" id="gateOpen">输入 / 申请授权码</button>' +
+      '<button class="btn ghost" data-go="home">返回首页</button></div>' +
+      '</div>'
+    );
+    $('#gateOpen').onclick = function () { openAuthModal(onPass); };
+    openAuthModal(onPass);
+  }
+
+  /** 包装日常培训相关视图，未授权则拦截 */
+  function gateDaily(name) {
+    var orig = Views[name];
+    Views[name] = function (params) {
+      stopAuthPoll();
+      if (!L.Auth) return orig(params);
+      L.Auth.check().then(function (r) {
+        if (r.ok) return orig(params);
+        authGatePage(r.reason, r.msg, function () { orig(params); });
+      });
+    };
+  }
+  ['daily', 'dailyPractice', 'dailyExamSetup', 'dailyDoc'].forEach(gateDaily);
 
   /* ============ 导出 ============ */
   global.LDWS.UI = {

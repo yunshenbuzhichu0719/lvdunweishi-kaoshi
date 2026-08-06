@@ -207,7 +207,14 @@
       switchLimit: 3,
       shuffleOptions: true,
       antiCopy: false,
-      plans: DAILY_POSITION_PLANS  // 日常培训考试方案（内置岗位方案）
+      plans: DAILY_POSITION_PLANS, // 日常培训考试方案（内置岗位方案）
+      auth: {                 // 日常培训考核 · 授权码访问控制
+        enabled: true,        // 是否需要授权码才能进入本模块
+        days: 30,             // 默认授权有效期（天）
+        bind: true,           // 生成授权码时默认绑定申请人账号
+        secret: '',           // 自定义签名密钥（留空使用内置密钥；修改后须重新分发系统文件）
+        seq: 1                // 授权码序号（自增）
+      }
     },
     report: {               // 成绩回传（集中收集）
       enabled: false,       // 是否启用回传

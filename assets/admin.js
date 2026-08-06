@@ -17,6 +17,7 @@
     { k: 'overview', t: '概览' },
     { k: 'dailyBank', t: '日常培训题库' },
     { k: 'dailyPlan', t: '日常考试方案' },
+    { k: 'dailyAuth', t: '日常授权管理' },
     { k: 'kpBank', t: '关键岗位题库' },
     { k: 'kpCfg', t: '关键岗位参数' },
     { k: 'kpPositions', t: '关键岗位配置' },
@@ -315,6 +316,334 @@
       }, 60);
     }
     draw();
+  };
+
+  /* ---------- 日常授权管理 ---------- */
+  function acopy(txt) {
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(txt).then(function () { ui().toast('已复制', 'ok'); },
+          function () { fb(); });
+        return;
+      }
+    } catch (e) { }
+    fb();
+    function fb() {
+      try {
+        var ta = document.createElement('textarea');
+        ta.value = txt; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select();
+        var ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+        ui().toast(ok ? '已复制' : '复制失败，请手动选择复制', ok ? 'ok' : 'err');
+      } catch (e2) { ui().toast('复制失败，请手动选择复制', 'err'); }
+    }
+  }
+
+  function showCodeBox(rec) {
+    ui().modal({
+      title: '授权码已生成', lock: true,
+      html: '<div style="text-align:center;padding:6px 0 2px">' +
+        '<div style="font-size:12.5px;color:var(--ink-400);margin-bottom:8px">发放给 <b>' + esc(rec.name || rec.user || '（通用）') + '</b></div>' +
+        '<div style="font-family:Consolas,Menlo,monospace;font-size:26px;font-weight:700;letter-spacing:3px;color:var(--green-800);background:var(--green-050);border:1px dashed var(--green-500);border-radius:10px;padding:16px 10px">' +
+        esc(rec.code) + '</div>' +
+        '<div style="margin-top:12px;font-size:13px;color:var(--ink-600)">有效期至 <b>' + L.Auth.fmtDay(rec.expireAt) + '</b>' +
+        '（' + rec.days + ' 天）' + (rec.user ? ' · 仅限账号 <b>' + esc(rec.user) + '</b> 使用' : ' · <b style="color:var(--amber)">通用码，任何账号可用</b>') + '</div>' +
+        '<div style="margin-top:10px;font-size:12.5px;color:var(--ink-400);line-height:1.7">请通过微信 / 短信 / 口头告知学员。学员在「日常培训考核」入口输入即可进入；' +
+        '若学员与本机为同一浏览器，其页面会自动放行。</div></div>',
+      buttons: [{ text: '复制授权码', value: 'copy', primary: true }, { text: '关闭', value: false }]
+    }).then(function (v) { if (v === 'copy') acopy(rec.code); });
+  }
+
+  PAGES.dailyAuth = function () {
+    var A = L.Auth;
+    var ac = A.cfg();
+
+    $('#abody').innerHTML =
+      '<h3 style="margin:0 0 4px;font-size:17px">日常培训考核 · 授权管理</h3>' +
+      '<div class="sub" style="color:var(--ink-400);font-size:13px;margin-bottom:18px">' +
+      '开启后，学员进入「日常培训考核」必须持有后台下发的授权码。授权码自带有效期，可随时撤销。</div>' +
+
+      /* 参数 */
+      '<div class="card pad" style="margin-bottom:16px">' +
+      '<div style="display:flex;gap:22px;align-items:flex-end;flex-wrap:wrap">' +
+      '<label style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;margin-bottom:4px">' +
+      '<input type="checkbox" id="auEn" style="width:auto"' + (ac.enabled ? ' checked' : '') + '> 启用授权码访问控制</label>' +
+      '<label class="fld" style="width:160px;margin:0"><span>默认有效期（天）</span>' +
+      '<input type="number" id="auDays" min="1" max="4000" value="' + (ac.days || 30) + '"></label>' +
+      '<label style="display:flex;align-items:center;gap:8px;font-size:13.5px;margin-bottom:8px">' +
+      '<input type="checkbox" id="auBind" style="width:auto"' + (ac.bind !== false ? ' checked' : '') + '> 授权码绑定申请人账号</label>' +
+      '<label style="display:flex;align-items:center;gap:8px;font-size:13.5px;margin-bottom:8px">' +
+      '<input type="checkbox" id="auAuto" style="width:auto"' + (ac.autoGrant ? ' checked' : '') + '> 收到申请自动授权</label>' +
+      '<div style="flex:1"></div>' +
+      '<button class="btn sm" id="auSave">保存设置</button></div>' +
+      '<div style="margin-top:12px;display:flex;gap:22px;align-items:flex-end;flex-wrap:wrap">' +
+      '<label class="fld" style="flex:1;min-width:280px;margin:0"><span>签名密钥（留空使用内置密钥）</span>' +
+      '<input type="text" id="auSec" placeholder="' + esc(A.BUILTIN_SECRET) + '" value="' + esc(ac.secret || '') + '"></label></div>' +
+      '<div style="margin-top:12px;background:#f6f9f7;border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:12.5px;color:var(--ink-600);line-height:1.85">' +
+      '<b style="color:var(--ink-800)">工作方式：</b>授权码为离线可验证的签名码，学员在任何设备上都能校验，无需联网。' +
+      '<br>· <b style="color:var(--ink-800)">同一台电脑（同一浏览器）</b>：学员提交申请后后台立即可见，点「授权」后学员页面 3 秒内自动放行。' +
+      '<br>· <b style="color:var(--ink-800)">不同设备</b>：学员把「申请码」发给你，在下方粘贴录入即可看到申请人姓名/工号/部门；生成的授权码回复给学员即可。' +
+      '<br>· <b style="color:var(--ink-800)">撤销</b>：本机学员立即失效；异地设备为离线校验，撤销后须等授权码到期或通知本人，建议有效期不要设置过长。' +
+      '<br>· <b style="color:var(--red)">修改签名密钥会使已发放的全部授权码立即失效</b>，且必须把系统文件重新分发给全员。</div>' +
+      '</div>' +
+
+      /* 申请 */
+      '<div class="page-hd" style="margin:22px 0 12px"><div><h3 style="margin:0;font-size:16px">授权申请</h3>' +
+      '<div class="sub" id="reqSub">—</div></div>' +
+      '<div style="display:flex;gap:8px"><button class="btn ghost sm" id="reqPaste">录入申请码</button>' +
+      '<button class="btn ghost sm" id="reqRefresh">刷新</button>' +
+      '<button class="btn ghost sm" id="reqClear">清除已处理</button></div></div>' +
+      '<div id="pasteBox" class="hidden card pad" style="margin-bottom:12px">' +
+      '<label class="fld" style="margin:0"><span>粘贴学员发来的申请码（LDREQ- 开头）</span>' +
+      '<textarea id="pasteIn" rows="3" style="width:100%;font-family:Consolas,Menlo,monospace;font-size:12px;word-break:break-all;padding:10px;border:1px solid var(--line);border-radius:8px;resize:vertical"></textarea></label>' +
+      '<div style="margin-top:10px"><button class="btn sm" id="pasteOk">解析并加入申请列表</button></div></div>' +
+      '<div class="tbl-wrap"><table class="tbl"><thead><tr>' +
+      '<th style="width:34px">#</th><th>申请人</th><th>账号</th><th>工号 / 部门</th><th>申请事由</th><th>申请时间</th><th>来源</th><th>状态</th><th style="width:170px">操作</th>' +
+      '</tr></thead><tbody id="reqBody"></tbody></table></div>' +
+
+      /* 手动发码 */
+      '<div class="page-hd" style="margin:26px 0 12px"><div><h3 style="margin:0;font-size:16px">手动生成授权码</h3>' +
+      '<div class="sub">无需申请，直接为指定人员或全体生成授权码</div></div></div>' +
+      '<div class="card pad" style="margin-bottom:8px">' +
+      '<div style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap">' +
+      '<label class="fld" style="width:180px;margin:0"><span>绑定账号（留空=通用码）</span><input type="text" id="mkUser" placeholder="学员登录用户名"></label>' +
+      '<label class="fld" style="width:150px;margin:0"><span>姓名（备注）</span><input type="text" id="mkName" placeholder="选填"></label>' +
+      '<label class="fld" style="width:150px;margin:0"><span>部门（备注）</span><input type="text" id="mkDept" placeholder="选填"></label>' +
+      '<label class="fld" style="width:130px;margin:0"><span>有效期（天）</span><input type="number" id="mkDays" min="1" max="4000" value="' + (ac.days || 30) + '"></label>' +
+      '<button class="btn" id="mkGo">生成授权码</button></div>' +
+      '<div style="margin-top:10px;font-size:12.5px;color:var(--ink-400)">通用码不绑定账号，任何人拿到都能使用，请谨慎发放并设置较短有效期。</div></div>' +
+
+      /* 台账 */
+      '<div class="page-hd" style="margin:26px 0 12px"><div><h3 style="margin:0;font-size:16px">授权台账</h3>' +
+      '<div class="sub" id="grantSub">—</div></div>' +
+      '<div style="display:flex;gap:8px"><button class="btn ghost sm" id="grRevokeAll" style="color:var(--red)">全部撤销</button></div></div>' +
+      '<div class="tbl-wrap"><table class="tbl"><thead><tr>' +
+      '<th style="width:34px">#</th><th>授权码</th><th>持有人</th><th>绑定账号</th><th>发放时间</th><th>到期时间</th><th>剩余</th><th>状态</th><th style="width:210px">操作</th>' +
+      '</tr></thead><tbody id="grBody"></tbody></table></div>';
+
+    /* ---- 设置保存 ---- */
+    $('#auSave').onclick = function () {
+      var newSec = ($('#auSec').value || '').trim();
+      var old = A.cfg().secret || '';
+      var doSave = function () {
+        A.saveCfg({
+          enabled: $('#auEn').checked,
+          days: Math.max(1, Math.min(4000, parseInt($('#auDays').value, 10) || 30)),
+          bind: $('#auBind').checked,
+          autoGrant: $('#auAuto').checked,
+          secret: newSec
+        }).then(function () { ui().toast('设置已保存', 'ok'); PAGES.dailyAuth(); });
+      };
+      if (newSec !== old) {
+        ui().confirmBox('修改签名密钥',
+          '修改密钥后，<b style="color:var(--red)">此前发放的全部授权码将立即失效</b>，且必须把系统文件重新分发给所有终端。确认修改？',
+          '确认修改', true).then(function (v) { if (v) doSave(); });
+      } else doSave();
+    };
+
+    /* ---- 申请列表 ---- */
+    function drawReqs() {
+      A.reqs.all().then(function (list) {
+        var pend = list.filter(function (x) { return x.status === 'pending'; }).length;
+        $('#reqSub').innerHTML = '共 ' + list.length + ' 条，待处理 <b style="color:' + (pend ? 'var(--amber)' : 'var(--ink-400)') + '">' + pend + '</b> 条';
+        $('#reqBody').innerHTML = list.length ? list.map(function (r, i) {
+          var st = r.status === 'pending' ? '<span class="tag t3">待处理</span>'
+            : r.status === 'granted' ? '<span class="tag ok">已授权</span>'
+              : '<span class="tag no">已拒绝</span>';
+          var op = r.status === 'pending'
+            ? '<a style="color:var(--green-700);cursor:pointer;font-weight:600" data-grant="' + esc(r.id) + '">授权</a>' +
+              ' <span style="color:var(--line)">|</span> ' +
+              '<a style="color:var(--red);cursor:pointer" data-reject="' + esc(r.id) + '">拒绝</a>'
+            : (r.code ? '<a style="color:var(--green-700);cursor:pointer" data-rcopy="' + esc(r.code) + '">复制授权码</a> <span style="color:var(--line)">|</span> ' : '') +
+              '<a style="color:var(--ink-400);cursor:pointer" data-rdel="' + esc(r.id) + '">删除</a>';
+          return '<tr><td>' + (i + 1) + '</td>' +
+            '<td><b>' + esc(r.name || '（未填）') + '</b></td>' +
+            '<td>' + esc(r.user || '—') + '</td>' +
+            '<td>' + esc(r.no || '—') + (r.dept ? ' / ' + esc(r.dept) : '') + '</td>' +
+            '<td style="max-width:200px">' + esc(r.note || '—') + '</td>' +
+            '<td>' + ui().fmtDate(r.at) + '</td>' +
+            '<td>' + (r.from === 'paste' ? '<span class="tag t1">申请码</span>' : '<span class="tag t2">本机</span>') + '</td>' +
+            '<td>' + st + (r.code ? '<div style="font-family:Consolas,monospace;font-size:11.5px;color:var(--ink-400);margin-top:2px">' + esc(r.code) + '</div>' : '') + '</td>' +
+            '<td>' + op + '</td></tr>';
+        }).join('') : '<tr><td colspan="9" style="text-align:center;color:var(--ink-400);padding:34px">暂无授权申请</td></tr>';
+
+        $$('[data-grant]').forEach(function (el) {
+          el.onclick = function () { grantReq(el.getAttribute('data-grant')); };
+        });
+        $$('[data-reject]').forEach(function (el) {
+          el.onclick = function () {
+            A.reqs.update(el.getAttribute('data-reject'), { status: 'rejected' })
+              .then(function () { ui().toast('已拒绝', 'ok'); drawReqs(); });
+          };
+        });
+        $$('[data-rcopy]').forEach(function (el) {
+          el.onclick = function () { acopy(el.getAttribute('data-rcopy')); };
+        });
+        $$('[data-rdel]').forEach(function (el) {
+          el.onclick = function () { A.reqs.remove(el.getAttribute('data-rdel')).then(drawReqs); };
+        });
+
+        // 自动授权
+        if (A.cfg().autoGrant && pend) {
+          var first = list.filter(function (x) { return x.status === 'pending'; })[0];
+          if (first) grantReq(first.id, true);
+        }
+      });
+    }
+
+    function grantReq(id, silent) {
+      A.reqs.all().then(function (list) {
+        var r = list.filter(function (x) { return x.id === id; })[0];
+        if (!r) return;
+        var c = A.cfg();
+        A.grants.issue({
+          bindUser: (c.bind !== false) ? (r.user || '') : '',
+          name: r.name, no: r.no, dept: r.dept,
+          days: c.days || 30, reqId: r.id, note: r.note
+        }).then(function (rec) {
+          return A.reqs.update(id, { status: 'granted', code: rec.code }).then(function () {
+            drawReqs(); drawGrants();
+            if (silent) ui().toast('已自动授权：' + (r.name || r.user) + ' → ' + rec.code, 'ok');
+            else showCodeBox(rec);
+          });
+        });
+      });
+    }
+
+    $('#reqRefresh').onclick = function () { drawReqs(); drawGrants(); ui().toast('已刷新', 'ok'); };
+    $('#reqClear').onclick = function () {
+      ui().confirmBox('清除已处理', '将删除全部「已授权 / 已拒绝」的申请记录（授权台账不受影响）。确认？', '清除', true)
+        .then(function (v) { if (v) A.reqs.clearDone().then(function () { drawReqs(); ui().toast('已清除', 'ok'); }); });
+    };
+    $('#reqPaste').onclick = function () { $('#pasteBox').classList.toggle('hidden'); };
+    $('#pasteOk').onclick = function () {
+      var r = A.parseReqCode($('#pasteIn').value);
+      if (!r.ok) return ui().toast(r.msg, 'err');
+      var d = r.data;
+      A.reqs.add({
+        user: d.user, name: d.name, no: d.no, dept: d.dept,
+        note: d.note, dev: d.dev, at: d.at, from: 'paste'
+      }).then(function () {
+        $('#pasteIn').value = '';
+        $('#pasteBox').classList.add('hidden');
+        ui().toast('已录入：' + (d.name || d.user), 'ok');
+        drawReqs();
+      });
+    };
+
+    /* ---- 手动发码 ---- */
+    $('#mkGo').onclick = function () {
+      var u = ($('#mkUser').value || '').trim();
+      var days = Math.max(1, Math.min(4000, parseInt($('#mkDays').value, 10) || 30));
+      var go2 = function () {
+        A.grants.issue({
+          bindUser: u, name: ($('#mkName').value || '').trim(),
+          dept: ($('#mkDept').value || '').trim(), days: days, note: '手动生成'
+        }).then(function (rec) {
+          $('#mkUser').value = ''; $('#mkName').value = ''; $('#mkDept').value = '';
+          drawGrants(); showCodeBox(rec);
+        });
+      };
+      if (!u) {
+        ui().confirmBox('生成通用码', '未填写绑定账号，将生成<b style="color:var(--amber)">通用授权码</b>——任何拿到该码的人都可进入日常培训考核模块。确认生成？', '生成', false)
+          .then(function (v) { if (v) go2(); });
+      } else go2();
+    };
+
+    /* ---- 授权台账 ---- */
+    function drawGrants() {
+      A.grants.all().then(function (list) {
+        var now = Date.now();
+        var act = list.filter(function (g) { return g.status === 'active' && g.expireAt > now; }).length;
+        $('#grantSub').innerHTML = '共 ' + list.length + ' 张，有效 <b style="color:var(--green-700)">' + act + '</b> 张';
+        $('#grBody').innerHTML = list.length ? list.map(function (g, i) {
+          var expired = g.expireAt <= now;
+          var st = g.status === 'revoked' ? '<span class="tag no">已撤销</span>'
+            : expired ? '<span class="tag t3">已过期</span>' : '<span class="tag ok">有效</span>';
+          var left = expired ? '—' : (A.daysLeft(g.expireAt) + ' 天');
+          var op =
+            '<a style="color:var(--green-700);cursor:pointer" data-gcopy="' + esc(g.code) + '">复制</a>' +
+            ' <span style="color:var(--line)">|</span> ' +
+            (g.status === 'revoked'
+              ? '<a style="color:var(--green-700);cursor:pointer" data-gon="' + esc(g.code) + '">恢复</a>'
+              : '<a style="color:var(--red);cursor:pointer" data-goff="' + esc(g.code) + '">撤销</a>') +
+            ' <span style="color:var(--line)">|</span> ' +
+            '<a style="color:var(--blue);cursor:pointer" data-gext="' + esc(g.code) + '">延期</a>' +
+            ' <span style="color:var(--line)">|</span> ' +
+            '<a style="color:var(--ink-400);cursor:pointer" data-gdel="' + esc(g.code) + '">删除</a>';
+          return '<tr><td>' + (i + 1) + '</td>' +
+            '<td style="font-family:Consolas,Menlo,monospace;font-weight:600">' + esc(g.code) + '</td>' +
+            '<td>' + esc(g.name || '—') + (g.dept ? '<div style="font-size:11.5px;color:var(--ink-400)">' + esc(g.dept) + '</div>' : '') + '</td>' +
+            '<td>' + (g.user ? esc(g.user) : '<span class="tag t3">通用码</span>') + '</td>' +
+            '<td>' + ui().fmtDate(g.issuedAt) + '</td>' +
+            '<td>' + A.fmtDay(g.expireAt) + '</td>' +
+            '<td>' + left + '</td>' +
+            '<td>' + st + '</td>' +
+            '<td>' + op + '</td></tr>';
+        }).join('') : '<tr><td colspan="9" style="text-align:center;color:var(--ink-400);padding:34px">尚未发放授权码</td></tr>';
+
+        $$('[data-gcopy]').forEach(function (el) { el.onclick = function () { acopy(el.getAttribute('data-gcopy')); }; });
+        $$('[data-gon]').forEach(function (el) {
+          el.onclick = function () { A.grants.update(el.getAttribute('data-gon'), { status: 'active' }).then(function () { ui().toast('已恢复', 'ok'); drawGrants(); }); };
+        });
+        $$('[data-goff]').forEach(function (el) {
+          el.onclick = function () {
+            var code = el.getAttribute('data-goff');
+            ui().confirmBox('撤销授权', '撤销后该授权码立即失效（本机学员下次进入即被拦截）。确认撤销 <b>' + esc(code) + '</b>？', '撤销', true)
+              .then(function (v) {
+                if (!v) return;
+                A.grants.update(code, { status: 'revoked' }).then(function () {
+                  // 本机学员若正持有该码，一并清除其本地授权态
+                  return L.Auth.state.get().then(function (st) {
+                    if (st && A.normalize(st.code) === A.normalize(code)) return L.Auth.state.clear();
+                  });
+                }).then(function () { ui().toast('已撤销', 'ok'); drawGrants(); });
+              });
+          };
+        });
+        $$('[data-gext]').forEach(function (el) {
+          el.onclick = function () {
+            var code = el.getAttribute('data-gext');
+            ui().modal({
+              title: '延期换发', lock: true,
+              html: '<div style="font-size:13.5px;line-height:1.8">原授权码 <b>' + esc(code) + '</b> 将被作废，并为同一人换发一张新码。' +
+                '<label class="fld" style="margin-top:12px"><span>新有效期（天）</span><input type="number" id="extDays" min="1" max="4000" value="' + (A.cfg().days || 30) + '"></label></div>',
+              buttons: [{ text: '取消', value: false }, { text: '换发新码', primary: true, value: true }]
+            }).then(function (v) {
+              if (!v) return;
+              var d = Math.max(1, Math.min(4000, parseInt(($('#extDays') && $('#extDays').value) || '30', 10) || 30));
+              A.grants.extend(code, d).then(function (rec) {
+                drawGrants();
+                if (rec) showCodeBox(rec);
+              });
+            });
+          };
+        });
+        $$('[data-gdel]').forEach(function (el) {
+          el.onclick = function () {
+            var code = el.getAttribute('data-gdel');
+            ui().confirmBox('删除记录', '仅从台账中删除该条记录。<b style="color:var(--red)">注意：删除后该码将不再受「撤销」约束</b>，若需停用请先撤销。确认删除？', '删除', true)
+              .then(function (v) { if (v) A.grants.remove(code).then(function () { drawGrants(); }); });
+          };
+        });
+      });
+    }
+
+    $('#grRevokeAll').onclick = function () {
+      ui().confirmBox('全部撤销', '将把台账中<b style="color:var(--red)">全部有效授权码</b>置为已撤销。确认？', '全部撤销', true)
+        .then(function (v) {
+          if (!v) return;
+          A.grants.all().then(function (list) {
+            list.forEach(function (g) { g.status = 'revoked'; });
+            return A.grants.save(list);
+          }).then(function () { return L.Auth.state.clear(); })
+            .then(function () { ui().toast('已全部撤销', 'ok'); drawGrants(); });
+        });
+    };
+
+    drawReqs();
+    drawGrants();
   };
 
   /* ---------- 关键岗位参数 ---------- */
