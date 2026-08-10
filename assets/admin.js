@@ -942,13 +942,17 @@
     }).join('');
     document.getElementById('main').innerHTML =
       '<div class="no-print" style="display:flex;gap:10px;justify-content:flex-end;margin-bottom:16px">' +
-      '<button class="btn ghost" id="prBack">返回</button><button class="btn" id="prDo">打印 / 另存为PDF</button></div>' +
+      '<button class="btn ghost" id="prBack">返回</button><button class="btn ghost" id="prPdf">导出PDF</button><button class="btn" id="prDo">打印</button></div>' +
       '<div class="print-records"><h2>考试记录表</h2>' +
       '<div class="pr-sub">' + ui().esc(L.Bank.cfg.company) + '　共 ' + list.length + ' 条　打印时间 ' + ui().fmtDate(Date.now()) + '</div>' +
       '<table class="tbl"><thead><tr><th>时间</th><th>姓名 / 工号 / 部门</th><th>模块 / 考试</th><th>得分</th><th>结论</th><th>用时</th><th>切屏</th></tr></thead>' +
       '<tbody>' + (rows || '<tr><td colspan="7" style="text-align:center;padding:30px;color:#999">暂无记录</td></tr>') + '</tbody></table></div>';
     document.getElementById('prBack').onclick = function () { L.Admin.enter('records'); };
     document.getElementById('prDo').onclick = function () { window.print(); };
+    document.getElementById('prPdf').onclick = function () {
+      var el = document.querySelector('.print-records');
+      ui().exportPdf(el, '考试记录表_' + ui().fmtDate(Date.now()) + '.pdf');
+    };
   }
 
   /* ---------- 系统设置 ---------- */

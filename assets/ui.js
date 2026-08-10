@@ -1445,7 +1445,7 @@
     }
     var html =
       '<div class="no-print" style="display:flex;gap:10px;justify-content:flex-end;margin-bottom:16px">' +
-      '<button class="btn ghost" id="backRes2">返回成绩单</button><button class="btn" id="doPrint2">打印 / 另存为PDF</button></div>' +
+      '<button class="btn ghost" id="backRes2">返回成绩单</button><button class="btn ghost" id="doPdf2">导出PDF</button><button class="btn" id="doPrint2">打印</button></div>' +
       '<div class="paper-print">' +
       '<div class="pp-hd"><h1>' + esc(rec.title) + '</h1>' +
       '<div class="pp-sub">' + esc(L.Bank.cfg.company) + ' · 考试试卷存档</div>' +
@@ -1459,6 +1459,10 @@
     Router.current = { view: 'print', params: { ns: rec.ns } };
     refreshNav();
     $('#doPrint2').onclick = function () { window.print(); };
+    $('#doPdf2').onclick = function () {
+      var pp = document.querySelector('.paper-print');
+      ldwsExportPdf(pp, '试卷存档_' + (rec.who.name || '考生') + '_' + fmtDate(rec.ts) + '.pdf');
+    };
     $('#backRes2').onclick = function () { showResult(rec); };
   }
 
@@ -1467,7 +1471,7 @@
     var d = new Date(rec.ts);
     setHTML(
       '<div class="no-print" style="margin-bottom:16px;display:flex;gap:10px;justify-content:flex-end">' +
-      '<button class="btn ghost" id="backRes">返回成绩单</button><button class="btn" id="doPrint">打印 / 另存为PDF</button></div>' +
+      '<button class="btn ghost" id="backRes">返回成绩单</button><button class="btn ghost" id="doPdf">导出PDF</button><button class="btn" id="doPrint">打印</button></div>' +
       '<div class="cert">' +
       '<h1>考核合格证明</h1><div class="sub">CERTIFICATE OF ASSESSMENT</div>' +
       '<div class="body">' +
@@ -1485,7 +1489,82 @@
     Router.current = { view: 'cert', params: { ns: rec.ns } };
     refreshNav();
     $('#doPrint').onclick = function () { window.print(); };
+    $('#doPdf').onclick = function () {
+      var cert = document.querySelector('.cert');
+      ldwsExportPdf(cert, '合格证明_' + (rec.who.name || '考生') + '_' + fmtDate(rec.ts) + '.pdf');
+    };
     $('#backRes').onclick = function () { showResult(rec); };
+  }
+
+  /* ============ 导出 PDF（真实下载 .pdf 文件，不依赖系统打印驱动） ============ */
+  // 容器按最小单元（每题/每段/页眉页脚）逐个渲染为图片再拼页，
+  // 避免超长试卷一次性渲染成超大 canvas 触发浏览器上限导致空白。
+  function ldwsExportPdf(container, filename) {
+    if (typeof window.html2canvas === 'undefined' || !window.jspdf || !window.jspdf.jsPDF) {
+      alert('PDF 组件未加载，请刷新页面后重试；或改用「打印」功能另存为 PDF。');
+      return;
+    }
+    if (typeof toast === 'function') toast('正在生成 PDF，请稍候…', 'ok', 60000);
+    var jsPDF = window.jspdf.jsPDF;
+    var pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+    var pageW = pdf.internal.pageSize.getWidth();
+    var pageH = pdf.internal.pageSize.getHeight();
+    var M = 10;                 // 页边距 mm
+    var cW = pageW - M * 2;     // 内容可用宽度 mm
+    // 试卷存档：拆成页眉 / 专项标题 / 每题 / 页脚；其余（合格证明、记录表）整体作为一个单元
+    var units;
+    if (container.classList && container.classList.contains('paper-print')) {
+      units = Array.prototype.slice.call(container.querySelectorAll('.pp-hd, h3.pp-sec, .pp-q, .pp-foot'));
+      if (!units.length) units = [container];
+    } else {
+      units = [container];
+    }
+    var cursorY = M;
+    function placeCanvas(canvas, done) {
+      var natH = canvas.height * cW / canvas.width; // 按内容宽度铺满时的高度(mm)
+      if (natH <= pageH - M * 2) {
+        if (cursorY + natH > pageH - M && cursorY > M) { pdf.addPage(); cursorY = M; }
+        pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', M, cursorY, cW, natH);
+        cursorY += natH;
+        done();
+      } else {
+        // 单元超过一页：按页高切片（每片独立成页，避免跨页截断错位）
+        var avail = pageH - M * 2;
+        var pxPerMm = canvas.height / natH;
+        var slicePx = Math.floor(avail * pxPerMm);
+        var y = 0;
+        function nextSlice() {
+          if (y >= canvas.height) { done(); return; }
+          var h = Math.min(slicePx, canvas.height - y);
+          var tmp = document.createElement('canvas');
+          tmp.width = canvas.width; tmp.height = h;
+          tmp.getContext('2d').drawImage(canvas, 0, y, canvas.width, h, 0, 0, canvas.width, h);
+          var sH = h / pxPerMm;
+          if (cursorY !== M) { pdf.addPage(); }
+          cursorY = M;
+          pdf.addImage(tmp.toDataURL('image/jpeg', 0.95), 'JPEG', M, cursorY, cW, sH);
+          cursorY += sH;
+          y += h;
+          nextSlice();
+        }
+        nextSlice();
+      }
+    }
+    var i = 0;
+    function step(err) {
+      if (err) { console.error('[exportPdf]', err); alert('生成 PDF 时出错：' + (err && err.message ? err.message : err)); return; }
+      if (i >= units.length) {
+        if (!units.length) { alert('没有可导出的内容。'); return; }
+        pdf.save(filename);
+        if (typeof toast === 'function') toast('PDF 已生成并开始下载', 'ok');
+        return;
+      }
+      var u = units[i++];
+      window.html2canvas(u, { scale: 2, backgroundColor: '#ffffff', useCORS: true, logging: false })
+        .then(function (cv) { placeCanvas(cv, step); })
+        .catch(step);
+    }
+    step();
   }
 
   /* ============ 直达考试链接 ============ */
@@ -1731,7 +1810,7 @@
   global.LDWS.UI = {
     $: $, $$: $$, esc: esc, setHTML: setHTML, toast: toast, modal: modal, confirmBox: confirmBox,
     fmtTime: fmtTime, fmtDate: fmtDate, typeTag: typeTag, crumb: crumb, go: go, Views: Views,
-    showResult: showResult, saveRecord: saveRecord, printExam: printExam,
+    showResult: showResult, saveRecord: saveRecord, printExam: printExam, exportPdf: ldwsExportPdf,
     isExamRunning: function () { return E && !E.finished; },
     deepLink: deepLink,
     initSession: initSession, login: doLogin, logout: doLogout,
