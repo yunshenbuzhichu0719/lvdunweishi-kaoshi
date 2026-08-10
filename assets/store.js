@@ -114,7 +114,7 @@
       subs: [
         { name: '安全专项', passMode: 'percent', pass: 100, n: { 1: 15, 2: 8, 3: 7 }, banks: ['D3'], ranges: { 1: [51, 80], 2: [136, 148], 3: [189, 208] } },
         { name: '通用基础', passMode: 'score', pass: 80, n: { 1: 20, 2: 10, 3: 10 }, banks: ['D2'], ranges: { 1: [1, 50], 2: [111, 135], 3: [164, 188] } },
-        { name: '岗位专项', passMode: 'score', pass: 80, n: { 1: 15, 2: 10, 3: 5 }, banks: ['D8'], ranges: { 1: [81, 95], 2: [149, 158], 3: [209, 213] } }
+        { name: '岗位专项', passMode: 'score', pass: 80, n: { 1: 30, 2: 20, 3: 15 }, banks: ['D8'] }
       ]
     },
     {
@@ -127,7 +127,7 @@
       subs: [
         { name: '安全专项', passMode: 'percent', pass: 100, n: { 1: 15, 2: 8, 3: 7 }, banks: ['D3'], ranges: { 1: [51, 80], 2: [136, 148], 3: [189, 208] } },
         { name: '通用基础', passMode: 'score', pass: 80, n: { 1: 20, 2: 10, 3: 10 }, banks: ['D2'], ranges: { 1: [1, 50], 2: [111, 135], 3: [164, 188] } },
-        { name: '岗位专项', passMode: 'score', pass: 80, n: { 1: 15, 2: 10, 3: 5 }, banks: ['D10'], ranges: { 1: [81, 95], 2: [149, 158], 3: [209, 213] } }
+        { name: '岗位专项', passMode: 'score', pass: 80, n: { 1: 30, 2: 20, 3: 15 }, banks: ['D10'] }
       ]
     },
     {
@@ -140,7 +140,7 @@
       subs: [
         { name: '安全专项', passMode: 'percent', pass: 100, n: { 1: 15, 2: 8, 3: 7 }, banks: ['D3'], ranges: { 1: [51, 80], 2: [136, 148], 3: [189, 208] } },
         { name: '通用基础', passMode: 'score', pass: 80, n: { 1: 20, 2: 10, 3: 10 }, banks: ['D2'], ranges: { 1: [1, 50], 2: [111, 135], 3: [164, 188] } },
-        { name: '岗位专项', passMode: 'score', pass: 85, n: { 1: 15, 2: 3, 3: 2 }, banks: ['D11'], ranges: { 1: [96, 110], 2: [159, 163], 3: [214, 216] } }
+        { name: '岗位专项', passMode: 'score', pass: 85, n: { 1: 30, 2: 20, 3: 15 }, banks: ['D11'] }
       ]
     },
     {
@@ -153,7 +153,7 @@
       subs: [
         { name: '安全专项', passMode: 'percent', pass: 100, n: { 1: 15, 2: 8, 3: 7 }, banks: ['D3'], ranges: { 1: [51, 80], 2: [136, 148], 3: [189, 208] } },
         { name: '通用基础', passMode: 'score', pass: 80, n: { 1: 20, 2: 10, 3: 10 }, banks: ['D2'], ranges: { 1: [1, 50], 2: [111, 135], 3: [164, 188] } },
-        { name: '岗位专项', passMode: 'score', pass: 85, n: { 1: 15, 2: 3, 3: 2 }, banks: ['D12'], ranges: { 1: [96, 110], 2: [159, 163], 3: [214, 216] } }
+        { name: '岗位专项', passMode: 'score', pass: 85, n: { 1: 30, 2: 20, 3: 15 }, banks: ['D12'] }
       ]
     },
     {
@@ -166,7 +166,7 @@
       subs: [
         { name: '安全专项', passMode: 'percent', pass: 100, n: { 1: 15, 2: 8, 3: 7 }, banks: ['D3'], ranges: { 1: [51, 80], 2: [136, 148], 3: [189, 208] } },
         { name: '通用基础', passMode: 'score', pass: 80, n: { 1: 20, 2: 10, 3: 10 }, banks: ['D2'], ranges: { 1: [1, 50], 2: [111, 135], 3: [164, 188] } },
-        { name: '岗位专项', passMode: 'score', pass: 80, n: { 1: 15, 2: 10, 3: 5 }, banks: ['D9'] }
+        { name: '岗位专项', passMode: 'score', pass: 80, n: { 1: 30, 2: 20, 3: 15 }, banks: ['D9'] }
       ]
     },
     {
@@ -179,7 +179,7 @@
       subs: [
         { name: '安全专项', passMode: 'percent', pass: 100, n: { 1: 15, 2: 8, 3: 7 }, banks: ['D3'], ranges: { 1: [51, 80], 2: [136, 148], 3: [189, 208] } },
         { name: '通用基础', passMode: 'score', pass: 80, n: { 1: 20, 2: 10, 3: 10 }, banks: ['D2'], ranges: { 1: [1, 50], 2: [111, 135], 3: [164, 188] } },
-        { name: '岗位专项', passMode: 'score', pass: 80, n: { 1: 15, 2: 10, 3: 5 }, banks: ['D4'] }
+        { name: '岗位专项', passMode: 'score', pass: 80, n: { 1: 30, 2: 20, 3: 15 }, banks: ['D4'] }
       ]
     },
     {
@@ -192,7 +192,7 @@
       subs: [
         { name: '安全专项', passMode: 'percent', pass: 100, n: { 1: 15, 2: 8, 3: 7 }, banks: ['D3'], ranges: { 1: [51, 80], 2: [136, 148], 3: [189, 208] } },
         { name: '通用基础', passMode: 'score', pass: 80, n: { 1: 20, 2: 10, 3: 10 }, banks: ['D2'], ranges: { 1: [1, 50], 2: [111, 135], 3: [164, 188] } },
-        { name: '岗位专项', passMode: 'score', pass: 80, n: { 1: 15, 2: 10, 3: 5 }, banks: ['D5'] }
+        { name: '岗位专项', passMode: 'score', pass: 80, n: { 1: 30, 2: 20, 3: 15 }, banks: ['D5'] }
       ]
     },
     {
@@ -205,7 +205,7 @@
       subs: [
         { name: '安全专项', passMode: 'percent', pass: 100, n: { 1: 15, 2: 8, 3: 7 }, banks: ['D3'], ranges: { 1: [51, 80], 2: [136, 148], 3: [189, 208] } },
         { name: '通用基础', passMode: 'score', pass: 80, n: { 1: 20, 2: 10, 3: 10 }, banks: ['D2'], ranges: { 1: [1, 50], 2: [111, 135], 3: [164, 188] } },
-        { name: '岗位专项', passMode: 'score', pass: 80, n: { 1: 15, 2: 10, 3: 5 }, banks: ['D6'] }
+        { name: '岗位专项', passMode: 'score', pass: 80, n: { 1: 30, 2: 20, 3: 15 }, banks: ['D6'] }
       ]
     },
     {
@@ -218,7 +218,7 @@
       subs: [
         { name: '安全专项', passMode: 'percent', pass: 100, n: { 1: 15, 2: 8, 3: 7 }, banks: ['D3'], ranges: { 1: [51, 80], 2: [136, 148], 3: [189, 208] } },
         { name: '通用基础', passMode: 'score', pass: 80, n: { 1: 20, 2: 10, 3: 10 }, banks: ['D2'], ranges: { 1: [1, 50], 2: [111, 135], 3: [164, 188] } },
-        { name: '岗位专项', passMode: 'score', pass: 80, n: { 1: 15, 2: 10, 3: 5 }, banks: ['D7'] }
+        { name: '岗位专项', passMode: 'score', pass: 80, n: { 1: 30, 2: 20, 3: 15 }, banks: ['D7'] }
       ]
     }
   ];
@@ -276,11 +276,11 @@
         }
         // 迁移：将内置岗位方案更新为最新版本（补充 banks 映射，使考试模式使用分岗位题库 D2-D12）。
         // 内置岗位方案不可在后台编辑，直接覆盖；用户自建的自定义方案保持不变。
-        if ((Bank.cfg.daily._plansV || 0) < 2) {
+        if ((Bank.cfg.daily._plansV || 0) < 3) {
           Bank.cfg.daily.plans = (Bank.cfg.daily.plans || []).filter(function (p) {
             return p.kind !== 'position';
           }).concat(JSON.parse(JSON.stringify(DAILY_POSITION_PLANS)));
-          Bank.cfg.daily._plansV = 2;
+          Bank.cfg.daily._plansV = 3;
           return Bank.saveCfg().then(function () { return Bank.cfg; });
         }
         return Bank.cfg;
