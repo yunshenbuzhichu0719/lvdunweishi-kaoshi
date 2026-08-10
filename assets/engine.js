@@ -112,7 +112,7 @@
     var pool = spec.pool;   // 旧模式 { A:[q...], ... }；岗位模式为全部题目的数组
     var sections = [], all = [], warn = [];
 
-    // ---------- 岗位模式（多专项，按 id 范围抽题） ----------
+    // ---------- 岗位模式（多专项，按题库 banks 抽题，回退按 id 范围抽题） ----------
     if (plan && plan.subs && plan.subs.length) {
       var allQs = Array.isArray(pool) ? pool : (pool.all || []);
       plan.subs.forEach(function (sub) {
@@ -120,11 +120,20 @@
         [1, 2, 3].forEach(function (t) {
           var n = (sub.n && sub.n[t]) || 0;
           if (!n) return;
-          var range = (sub.ranges && sub.ranges[t]) || [];
-          var lo = range[0] || 0, hi = range[1] || 0;
-          var cand = allQs.filter(function (q) {
-            return q.t === t && numId(q.id) >= lo && numId(q.id) <= hi;
-          });
+          var cand;
+          if (sub.banks && sub.banks.length) {
+            // 新版：从指定题库（题目 bank 字段匹配）按题型抽题
+            cand = allQs.filter(function (q) {
+              return q.t === t && sub.banks.indexOf(q.bank) >= 0;
+            });
+          } else {
+            // 旧版：按题号范围（针对 D1 单一题库）抽题
+            var range = (sub.ranges && sub.ranges[t]) || [];
+            var lo = range[0] || 0, hi = range[1] || 0;
+            cand = allQs.filter(function (q) {
+              return q.t === t && numId(q.id) >= lo && numId(q.id) <= hi;
+            });
+          }
           var sel = pick(cand, n);
           if (sel.length < n) warn.push(sub.name + ' ' + L.Bank.typeName(t) + ' 题量不足（需 ' + n + ' 题，实有 ' + sel.length + ' 题）');
           got = got.concat(sel);

@@ -1014,7 +1014,8 @@
     }
 
     function startDailySubExam(pos, sub, who, cfg) {
-      L.Bank.questionsOf(['D1']).then(function (qs) {
+      var bankIds = (sub.banks && sub.banks.length) ? sub.banks.slice() : ['D1'];
+      L.Bank.questionsOf(bankIds).then(function (qs) {
         var plan = { kind: 'position', name: sub.name, subs: [sub], scoreMap: pos.scoreMap || { 1: 1, 2: 1, 3: 1 }, pass: 'all' };
         var paper = L.Engine.buildPaper({
           mode: 'custom', title: pos.position + ' · ' + sub.name, minutes: subMinutes(sub),
