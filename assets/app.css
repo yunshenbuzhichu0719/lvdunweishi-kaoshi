@@ -69,6 +69,14 @@ a{color:var(--green-700);text-decoration:none}
   border:1px solid var(--green-100);border-radius:99px;padding:3px 12px;font-size:12.5px;font-weight:600
 }
 .chip.gray{background:#f2f4f3;color:var(--ink-600);border-color:var(--line)}
+/* 考试范围多选 chip */
+.rng-chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:4px}
+.rng-grp-label{font-size:12.5px;font-weight:600;color:var(--ink-600);margin-bottom:8px}
+.chip.rng{background:#f2f4f3;color:var(--ink-600);border-color:var(--line);cursor:pointer;user-select:none;transition:.15s}
+.chip.rng:hover{border-color:var(--blue);color:var(--blue)}
+.chip.rng.on{background:var(--blue-bg);color:var(--blue);border-color:var(--blue)}
+.rng-summary{margin-top:14px;font-size:13px;color:var(--ink-600);line-height:1.7;padding:12px 14px;background:var(--green-050);border-radius:var(--radius-sm)}
+.rng-summary b{color:var(--ink-900)}
 .tag{display:inline-block;padding:1px 8px;border-radius:5px;font-size:11.5px;font-weight:600;line-height:19px}
 .tag.t1{background:var(--blue-bg);color:var(--blue)}
 .tag.t2{background:#f3ecfd;color:#7642c9}
@@ -409,10 +417,152 @@ table.tbl tr:hover td{background:#fafcfb}
 .doc-tbl tr:first-child td{background:var(--green-050);font-weight:700;color:var(--green-900)}
 .mod.m3 .go{color:#b8860b}
 .mod.m3:hover{border-color:#e0b84a}
+
+/* ============ 个人中心（学员主页）============ */
+.persona-wrap{max-width:920px;margin:0 auto}
+.persona-hero{
+  position:relative;overflow:hidden;
+  background:linear-gradient(118deg,#2f74ff 0%,#4a5cf0 55%,#7b4dff 100%);
+  color:#fff;border-radius:18px;padding:26px 30px 18px;margin-bottom:18px;
+}
+.persona-hero:before{
+  content:"";position:absolute;right:-90px;top:-110px;width:280px;height:280px;border-radius:50%;
+  background:radial-gradient(circle,rgba(255,255,255,.13),transparent 70%);
+}
+.ph-top{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
+.ph-text{flex:1}
+.ph-hi{font-size:24px;font-weight:700;letter-spacing:.5px}
+.ph-date{font-size:13px;opacity:.85;margin-top:5px}
+.ph-right{display:flex;flex-direction:column;align-items:center;gap:8px}
+.ph-avatar{
+  width:54px;height:54px;border-radius:50%;
+  background:linear-gradient(135deg,#ffb84a,#ff8a3d);
+  display:grid;place-items:center;font-size:22px;font-weight:700;color:#fff;
+  border:2px solid rgba(255,255,255,.4);box-shadow:0 4px 14px rgba(0,0,0,.18);
+}
+#personaLogout{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);color:#fff}
+#personaLogout:hover{background:rgba(255,255,255,.28)}
+.ph-stats{
+  display:flex;align-items:flex-end;gap:28px;margin-top:18px;flex-wrap:wrap;
+  border-top:1px solid rgba(255,255,255,.18);padding-top:14px;
+}
+.ph-stats > div{display:flex;flex-direction:column;align-items:flex-start}
+.ph-stats b.ph-sep{width:1px;height:36px;background:rgba(255,255,255,.25)}
+.ph-stats b{font-size:22px;font-weight:700;line-height:1.1}
+.ph-stats span{font-size:12px;opacity:.85;margin-top:4px}
+
+.persona-modules{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:20px}
+.pmod{
+  position:relative;cursor:pointer;overflow:hidden;
+  background:linear-gradient(135deg,#3a72ff 0%,#5b62ff 100%);
+  color:#fff;border-radius:18px;padding:22px 26px;min-height:140px;
+  box-shadow:0 6px 22px rgba(58,114,255,.18);
+  transition:.18s;
+}
+.pmod.m-violet{
+  background:linear-gradient(135deg,#7d4dff 0%,#9d5cff 50%,#c270ff 100%);
+  box-shadow:0 6px 22px rgba(125,77,255,.18);
+}
+.pmod:hover{transform:translateY(-3px);box-shadow:0 10px 28px rgba(0,0,0,.15)}
+.pmod-body{position:relative;z-index:2}
+.pmod-title{font-size:20px;font-weight:700}
+.pmod-sub{font-size:13px;opacity:.88;margin:4px 0 16px}
+.pmod .btn.light{background:rgba(255,255,255,.22);border:1px solid rgba(255,255,255,.35);color:#fff;border-radius:99px;padding:5px 16px;font-size:13px;font-weight:600}
+.pmod .btn.light:hover{background:rgba(255,255,255,.32)}
+.pmod-illu{
+  position:absolute;right:-8px;bottom:-14px;font-size:120px;line-height:1;
+  font-weight:900;color:rgba(255,255,255,.18);
+  text-shadow:0 4px 14px rgba(0,0,0,.08);
+}
+
+.persona-nav{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:14px}
+.pnav{
+  background:var(--card);border:1px solid var(--line);border-radius:14px;
+  padding:18px 18px 16px;cursor:pointer;text-align:center;transition:.18s;
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+}
+.pnav:hover{border-color:var(--green-500);box-shadow:var(--shadow);transform:translateY(-2px)}
+.pnav-glyph{
+  width:48px;height:48px;border-radius:14px;display:grid;place-items:center;
+  font-size:22px;font-weight:700;color:#fff;
+}
+.pnav.m-wrong .pnav-glyph{background:linear-gradient(135deg,#7e6dff,#a879ff)}
+.pnav.m-fav .pnav-glyph{background:linear-gradient(135deg,#ff7d3b,#ffa83c)}
+.pnav.m-study .pnav-glyph{background:linear-gradient(135deg,#ff5b6c,#ff8a4a)}
+.pnav.m-records .pnav-glyph{background:linear-gradient(135deg,#ff5b6c,#ff8a4a)}
+.pnav-t{font-weight:700;color:var(--ink-900);font-size:14.5px}
+.pnav-s{font-size:12px;color:var(--ink-400)}
+
+/* ns-tabs: 跨模块筛选 */
+.ns-tabs{display:flex;gap:4px;background:#eef2f0;border-radius:99px;padding:3px;border:1px solid var(--line)}
+.ns-tab{
+  border:0;background:transparent;padding:5px 16px;border-radius:99px;
+  font-size:13px;color:var(--ink-600);cursor:pointer;font-weight:600;transition:.15s;
+}
+.ns-tab.on{background:#fff;color:var(--green-800);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.ns-tab:hover:not(.on){background:#e2ebe6}
+
+/* qrow: 错题/收藏列表 */
+.qlist{display:flex;flex-direction:column;gap:10px}
+.qrow{
+  display:flex;gap:12px;align-items:center;background:var(--card);
+  border:1px solid var(--line);border-radius:12px;padding:14px 16px;transition:.15s;
+}
+.qrow:hover{border-color:var(--green-500);box-shadow:var(--shadow);transform:translateY(-1px)}
+.qno{
+  flex:0 0 auto;width:30px;height:30px;border-radius:50%;background:var(--green-050);
+  color:var(--green-800);display:grid;place-items:center;font-weight:700;font-size:13px;
+}
+.qbody{flex:1;min-width:0}
+.qstem{font-size:14px;color:var(--ink-800);margin-bottom:6px;line-height:1.5}
+.qmeta{display:flex;gap:6px;flex-wrap:wrap}
+
+/* pstat: 学习报告统计卡 */
+.stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:14px}
+.pstat{
+  position:relative;border-radius:14px;padding:18px 20px;overflow:hidden;color:#fff;
+  background:linear-gradient(135deg,#3a72ff,#5b62ff);min-height:96px;
+}
+.pstat.m-violet{background:linear-gradient(135deg,#7d4dff,#9d5cff)}
+.pstat.m-wrong{background:linear-gradient(135deg,#7e6dff,#a879ff)}
+.pstat.m-fav{background:linear-gradient(135deg,#ff7d3b,#ffa83c)}
+.pstat.m-study{background:linear-gradient(135deg,#ff5b6c,#ff8a4a)}
+.pstat.m-records{background:linear-gradient(135deg,#ff5b6c,#ff8a4a)}
+.pstat-t{font-size:13px;opacity:.88;font-weight:600}
+.pstat-b{font-size:30px;font-weight:800;line-height:1.1;margin:6px 0 4px}
+.pstat-s{font-size:12px;opacity:.82}
+
+.ns-stats{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:8px}
+.ns-stat{
+  background:#f7faf8;border:1px solid var(--line);border-radius:12px;padding:16px 18px;
+}
+.ns-stat-name{font-weight:700;color:var(--ink-900);margin-bottom:10px;font-size:14px}
+.ns-stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;text-align:center}
+.ns-stat-grid > div{display:flex;flex-direction:column;align-items:center}
+.ns-stat-grid b{font-size:18px;color:var(--green-800);font-weight:700}
+.ns-stat-grid span{font-size:11.5px;color:var(--ink-400);margin-top:2px}
+
+/* page-hd 内 ns-tabs 居右 */
+.page-hd .ns-tabs{flex:0 0 auto}
+
+@media (max-width:760px){
+  .persona-modules{grid-template-columns:1fr}
+  .persona-nav{grid-template-columns:repeat(2,1fr)}
+  .stat-grid{grid-template-columns:repeat(2,1fr)}
+  .ns-stats{grid-template-columns:1fr}
+  .ns-stat-grid{grid-template-columns:repeat(2,1fr)}
+}
+
 @media (max-width:600px){
-  .doc-reader{padding:18px 15px;border-radius:10px}
-  .doc-title{font-size:19px;margin-bottom:16px}
-  .doc-part{font-size:16px;margin:24px 0 10px}
-  .doc-p{font-size:13.5px}
-  .doc-h2{font-size:15px}
+  .hero{padding:14px 14px 16px;margin-bottom:14px;border-radius:12px}
+  .hero:after,.hero:before{display:none}
+  .hero h1{font-size:19px;margin-bottom:4px}
+  .hero p{font-size:12px;line-height:1.5;max-width:none}
+  .hero .stats{gap:10px 20px;margin-top:10px}
+  .hero .stats div b{font-size:17px;line-height:1.1}
+  .persona-hero{padding:20px 22px 14px;border-radius:14px}
+  .ph-hi{font-size:20px}
+  .pmod{min-height:120px;padding:18px 20px}
+  .pmod-title{font-size:18px}
+  .pmod-illu{font-size:90px}
 }

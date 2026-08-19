@@ -110,6 +110,8 @@
     if (v === 'result' || v === 'cert' || v === 'print' || v === 'exam') {
       return (Router.current.params && Router.current.params.ns) || 'home';
     }
+    if (v === 'personal' || v === 'personalWrong' || v === 'personalFav' ||
+        v === 'personalStudy' || v === 'personalRecords') return 'personal';
     return null;
   }
   function refreshNav() {
@@ -146,10 +148,398 @@
   /* 错题本 / 收藏 */
   function loadSet(key) { return L.Store.get(key).then(function (v) { return v || {}; }); }
 
-  /* ============ 首页 ============ */
+  /* ============ 首页（未登录：机构介绍；已登录：个人中心） ============ */
   var Views = {};
 
+  // 题面索引（lazy build）：qid -> 题目对象。覆盖内置 + 已加载的上传题库。
+  var _qidIdx = null;
+  function _buildQidIndex() {
+    if (_qidIdx) return _qidIdx;
+    _qidIdx = {};
+    function add(arr) { (arr || []).forEach(function (q) { if (q && q.id && !_qidIdx[q.id]) _qidIdx[q.id] = q; }); }
+    add(L.Bank.kpData && L.Bank.kpData.questions);
+    add(L.Bank.dailyData && L.Bank.dailyData.questions);
+    Object.keys(L.Bank._cache || {}).forEach(function (k) { add(L.Bank._cache[k]); });
+    return _qidIdx;
+  }
+  function _findQ(qid) {
+    var idx = _buildQidIndex();
+    return idx[qid] || null;
+  }
+
+  // 聚合当前账户的考试记录
+  function myRecords() {
+    if (!_session || !_session.user) return Promise.resolve([]);
+    return L.Store.get('records').then(function (list) {
+      return (list || []).filter(function (r) { return r.who && r.who.user === _session.user; });
+    });
+  }
+  // 聚合错题/收藏，跨日常 + 关键岗位；返回 [{ id, ns, n, q }]
+  function aggSet(kind) {
+    return Promise.all([
+      L.Store.get(kind + ':daily').then(function (m) { return { ns: 'daily', m: m || {} }; }),
+      L.Store.get(kind + ':keypost').then(function (m) { return { ns: 'keypost', m: m || {} }; })
+    ]).then(function (arr) {
+      var out = [];
+      arr.forEach(function (b) {
+        Object.keys(b.m).forEach(function (qid) {
+          var q = _findQ(qid);
+          if (q) out.push({ id: qid, ns: b.ns, n: b.m[qid] || 1, q: q });
+        });
+      });
+      return out;
+    });
+  }
+  function filterByNs(items, ns) {
+    if (!ns || ns === 'all') return items;
+    return items.filter(function (it) { return it.ns === ns; });
+  }
+
+  // 显示今日日期（"8月19日 周三"）
+  function _todayStr() {
+    var d = new Date(), wk = ['日','一','二','三','四','五','六'][d.getDay()];
+    return (d.getMonth() + 1) + '月' + d.getDate() + '日 周' + wk;
+  }
+
+  /* ============ 个人中心（学员主页） ============ */
+  function _personaHeader() {
+    var nm = (_session && _session.name) || '考生';
+    var initial = nm.substr(0, 1);
+    return '<div class="persona-hero">' +
+      '<div class="ph-top">' +
+        '<div class="ph-text">' +
+          '<div class="ph-hi">你好，' + esc(nm) + '</div>' +
+          '<div class="ph-date">' + _todayStr() + '</div>' +
+        '</div>' +
+        '<div class="ph-right">' +
+          '<div class="ph-avatar" title="' + esc(nm) + '">' + esc(initial) + '</div>' +
+          '<button class="btn ghost sm" id="personaLogout">退出登录</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="ph-stats"><div><b id="phStatTotal">—</b><span>累计答题</span></div>' +
+        '<b class="ph-sep"></b>' +
+        '<div><b id="phStatAcc">—</b><span>正确率</span></div>' +
+        '<b class="ph-sep"></b>' +
+        '<div><b id="phStatAvg">—</b><span>考试平均分</span></div></div>' +
+    '</div>';
+  }
+  function _personaModules() {
+    return '<div class="persona-modules">' +
+      '<div class="pmod m-blue" data-go="daily">' +
+        '<div class="pmod-body"><div class="pmod-title">专项练习</div>' +
+          '<div class="pmod-sub">逐题作答，即时反馈</div>' +
+          '<button class="btn light sm">开始练习 ›</button></div>' +
+        '<div class="pmod-illu">✎</div>' +
+      '</div>' +
+      '<div class="pmod m-violet" data-go="keypost">' +
+        '<div class="pmod-body"><div class="pmod-title">模拟考试</div>' +
+          '<div class="pmod-sub">系统组卷，总分100分</div>' +
+          '<button class="btn light sm">开始测试 ›</button></div>' +
+        '<div class="pmod-illu">✓</div>' +
+      '</div>' +
+    '</div>';
+  }
+  function _personaNav() {
+    return '<div class="persona-nav">' +
+      _navCard('personalWrong', '错题本', '重做与巩固', 'm-wrong', '✕') +
+      _navCard('personalFav', '收藏夹', '反复精炼重点题', 'm-fav', '❤') +
+      _navCard('personalStudy', '学习报告', '统计与趋势', 'm-study', '∿') +
+      _navCard('personalRecords', '考试记录', '历史成绩单', 'm-records', '≡') +
+    '</div>';
+  }
+  function _navCard(view, t, sub, cls, glyph) {
+    return '<div class="pnav ' + cls + '" data-go="' + view + '">' +
+      '<div class="pnav-glyph">' + glyph + '</div>' +
+      '<div class="pnav-t">' + esc(t) + '</div>' +
+      '<div class="pnav-s">' + esc(sub) + '</div>' +
+    '</div>';
+  }
+  function renderPersonal() {
+    var greet = '<div class="persona-wrap">' + _personaHeader() + _personaModules() + _personaNav() + '</div>';
+    setHTML(greet);
+    var lo = $('#personaLogout');
+    if (lo) lo.onclick = function () { doLogout(); };
+    // 异步填充统计
+    Promise.all([myRecords()]).then(function (rs) {
+      var recs = rs[0] || [];
+      var totalQ = 0, totalR = 0, totalW = 0, scoreSum = 0;
+      recs.forEach(function (r) {
+        totalQ += (r.right || 0) + (r.wrong || 0) + (r.blank || 0);
+        totalR += r.right || 0;
+        totalW += r.wrong || 0;
+        scoreSum += r.score || 0;
+      });
+      var acc = (totalR + totalW) ? Math.round(100 * totalR / (totalR + totalW)) : 0;
+      var avg = recs.length ? Math.round(10 * scoreSum / recs.length) / 10 : 0;
+      var el;
+      el = $('#phStatTotal'); if (el) el.textContent = totalQ + '题';
+      el = $('#phStatAcc'); if (el) el.textContent = acc + '%';
+      el = $('#phStatAvg'); if (el) el.textContent = avg + '分';
+    });
+  }
+  Views.personal = renderPersonal;
+
+  /* ============ 错题本 / 收藏夹（个人中心子页） ============ */
+  function _nsTabs(currentNs) {
+    return '<div class="ns-tabs">' +
+      [['all','全部'],['daily','日常培训'],['keypost','关键岗位']].map(function (p) {
+        return '<button class="ns-tab' + (currentNs === p[0] ? ' on' : '') + '" data-ns="' + p[0] + '">' + p[1] + '</button>';
+      }).join('') + '</div>';
+  }
+  function _renderSetList(view, kind) {
+    var ns = (Router.current && Router.current.params && Router.current.params.ns) || 'all';
+    aggSet(kind).then(function (all) {
+      var list = filterByNs(all, ns);
+      var html = '<div class="empty"><div class="big">暂无论题</div>' +
+        '<div>在「刷题模式」作答答错的题目会自动收录到这里。</div></div>';
+      if (view === 'personalFav') {
+        html = '<div class="empty"><div class="big">暂无收藏</div>' +
+          '<div>在「刷题模式」中点击「收藏」按钮可将题目加入这里。</div></div>';
+      }
+      if (all.length) {
+        var itemsHtml = list.map(function (it, i) {
+          var tname = L.Bank.typeName ? L.Bank.typeName(it.q.t) : '题目';
+          var preview = (it.q.q || '').slice(0, 56);
+          if ((it.q.q || '').length > 56) preview += '…';
+          var nsLbl = it.ns === 'daily' ? '日常' : '关键岗位';
+          return '<div class="qrow" data-id="' + esc(it.id) + '" data-ns="' + esc(it.ns) + '">' +
+            '<span class="qno">' + (i + 1) + '</span>' +
+            '<div class="qbody">' +
+              '<div class="qstem">' + esc(preview) + '</div>' +
+              '<div class="qmeta"><span class="tag t' + it.q.t + '">' + esc(tname) + '</span>' +
+                '<span class="chip gray">' + esc(nsLbl) + '</span>' +
+                (view === 'personalWrong' ? '<span class="chip">错' + it.n + '次</span>' : '') +
+              '</div>' +
+            '</div>' +
+            '<button class="btn ghost sm qview">查看</button>' +
+          '</div>';
+        }).join('');
+        html = '<div class="qlist">' + itemsHtml + '</div>' +
+          '<div class="empty" style="padding:14px;text-align:center;color:var(--ink-400)">共 <b style="color:var(--green-700)">' + list.length + '</b> 题' +
+          (list.length < all.length ? '（全部 ' + all.length + ' 题）' : '') + '</div>';
+      } else {
+        // 当 list 为空但 all 不为空（被筛选掉），给出提示
+        if (all.length && ns !== 'all') {
+          html = '<div class="empty"><div class="big">本模块暂无' + (view === 'personalFav' ? '收藏' : '错题') + '</div>' +
+            '<div>共 <b style="color:var(--green-700)">' + all.length + '</b> 个' + (view === 'personalFav' ? '收藏' : '错题') + '分布在其他模块。</div></div>';
+        }
+      }
+      var box = $('#setList');
+      if (box) box.innerHTML = html;
+      $$('.qview').forEach(function (b) {
+        b.onclick = function () {
+          var row = b.closest('.qrow');
+          var id = row.getAttribute('data-id'), nsAttr = row.getAttribute('data-ns');
+          var q = _findQ(id);
+          if (!q) return toast('题目详情不可用', 'err');
+          _showQuestionModal(q, nsAttr, view, id);
+        };
+      });
+    });
+    setHTML(crumb([{ t: '个人中心', go: 'personal' }, { t: view === 'personalFav' ? '收藏夹' : '错题本' }]) +
+      '<div class="page-hd"><div><h2>' + (view === 'personalFav' ? '收藏夹' : '错题本') + '</h2>' +
+      '<div class="sub">' + (view === 'personalFav' ? '反复精炼重点题目' : '回顾与巩固答错的题目') + '</div></div>' +
+      _nsTabs(ns) + '</div>' +
+      '<div id="setList" style="margin-top:14px"><div class="card pad empty"><div class="big">加载中…</div></div></div>');
+    $$('.ns-tab').forEach(function (b) {
+      b.onclick = function () {
+        var n = b.getAttribute('data-ns');
+        Router.current = { view: view, params: { ns: n } };
+        _renderSetList(view, kind);
+      };
+    });
+  }
+  function _showQuestionModal(q, ns, view, qid) {
+    var tname = L.Bank.typeName ? L.Bank.typeName(q.t) : '题目';
+    var optsHtml = (q.o || []).map(function (o, k) {
+      var Lt = OPTL[k], right = (q.a || '').indexOf(Lt) >= 0;
+      return '<div class="opt' + (right ? ' right' : '') + ' locked"><div class="k">' + Lt + '</div><div class="v">' + esc(o) + '</div></div>';
+    }).join('');
+    var btns;
+    if (view === 'personalWrong') {
+      btns = [{ text: '取消错题', value: 'clear' }, { text: '去重做这道题', primary: true, value: 'redo' }, { text: '关闭', value: false }];
+    } else {
+      btns = [{ text: '取消收藏', value: 'clear' }, { text: '去重做这道题', primary: true, value: 'redo' }, { text: '关闭', value: false }];
+    }
+    modal({
+      title: '题目详情', lock: false, buttons: btns,
+      html: '<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px"><span class="tag t' + q.t + '">' + esc(tname) + '</span>' +
+        '<span class="chip gray">' + esc(ns === 'daily' ? '日常培训' : '关键岗位') + '</span></div>' +
+        '<div style="font-size:15px;line-height:1.7;margin-bottom:14px">' + esc(q.q) + '</div>' +
+        '<div class="opts">' + optsHtml + '</div>' +
+        (q.e ? '<div style="margin-top:14px;background:#f7faf8;border-left:3px solid var(--green-500);padding:10px 14px;border-radius:6px;font-size:13.5px"><b>解析：</b>' + esc(q.e) + '</div>' : '')
+    }).then(function (v) {
+      if (v === 'clear') {
+        var key = (view === 'personalWrong' ? 'wrong:' : 'fav:') + ns;
+        L.Store.get(key).then(function (m) {
+          m = m || {};
+          delete m[qid];
+          L.Store.set(key, m).then(function () {
+            toast(view === 'personalWrong' ? '已从错题本移除' : '已取消收藏', 'ok');
+            _renderSetList(view, view === 'personalWrong' ? 'wrong' : 'fav');
+          });
+        });
+      } else if (v === 'redo') {
+        // 仅在学生刷题范围内启动（先选择题库再重做）：
+        // 直接打开刷题设置，并设置 scope=wrong/fav
+        go(view === 'personalWrong' ? (ns === 'keypost' ? 'kpPractice' : 'dailyPractice') :
+                                   (ns === 'keypost' ? 'kpPractice' : 'dailyPractice'));
+        // 预设置 scope（下面的 onMount 仅对一次性提示，实际 filter 仍由用户确认）
+      }
+    });
+  }
+  Views.personalWrong = function () {
+    if (!_session) return go('login');
+    _renderSetList('personalWrong', 'wrong');
+  };
+  Views.personalFav = function () {
+    if (!_session) return go('login');
+    _renderSetList('personalFav', 'fav');
+  };
+
+  /* ============ 学习报告 ============ */
+  Views.personalStudy = function () {
+    if (!_session) return go('login');
+    var ns = (Router.current && Router.current.params && Router.current.params.ns) || 'all';
+    Promise.all([myRecords(), aggSet('wrong'), aggSet('fav')]).then(function (rs) {
+      var recs = rs[0], wrongs = rs[1], favs = rs[2];
+      if (ns !== 'all') {
+        recs = recs.filter(function (r) { return r.ns === ns; });
+        wrongs = filterByNs(wrongs, ns);
+        favs = filterByNs(favs, ns);
+      }
+      var totalQ = 0, totalR = 0, totalW = 0, totalT = 0, scoreSum = 0, passCnt = 0, best = 0;
+      recs.forEach(function (r) {
+        totalQ += (r.right || 0) + (r.wrong || 0) + (r.blank || 0);
+        totalR += r.right || 0; totalW += r.wrong || 0;
+        totalT += r.used || 0; scoreSum += r.score || 0;
+        if (r.pass) passCnt++;
+        if ((r.score || 0) > best) best = r.score || 0;
+      });
+      var acc = (totalR + totalW) ? Math.round(100 * totalR / (totalR + totalW)) : 0;
+      var avg = recs.length ? Math.round(10 * scoreSum / recs.length) / 10 : 0;
+      var passRate = recs.length ? Math.round(100 * passCnt / recs.length) : 0;
+      var fmtT = function (sec) { var h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60); return (h ? h + '时' : '') + m + '分'; };
+
+      // 模块分布
+      var dailyRecs = recs.filter(function (r) { return r.ns === 'daily'; });
+      var kpRecs = recs.filter(function (r) { return r.ns === 'keypost'; });
+      function agg(arr) {
+        var s = 0, n = arr.length, p = 0, mx = 0;
+        arr.forEach(function (r) { s += r.score || 0; if (r.pass) p++; if ((r.score || 0) > mx) mx = r.score; });
+        return { n: n, avg: n ? Math.round(10 * s / n) / 10 : 0, pass: n ? Math.round(100 * p / n) : 0, best: mx };
+      }
+      var dailyStat = agg(dailyRecs), kpStat = agg(kpRecs);
+
+      // 近期 5 场（按时间倒序）
+      var recent = recs.slice(0, 5);
+      var recentHtml = recent.length ? '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>日期</th><th>模块</th><th>试卷</th><th>成绩</th><th>合格</th><th>用时</th></tr></thead><tbody>' +
+        recent.map(function (r) {
+          return '<tr><td>' + fmtDate(r.ts).slice(5) + '</td><td>' + (r.ns === 'keypost' ? '关键岗位' : '日常培训') + '</td>' +
+            '<td>' + esc(r.title || '—') + '</td><td><b>' + r.score + '</b>/' + r.total + '</td>' +
+            '<td>' + (r.pass ? '<span class="tag ok">合格</span>' : '<span class="tag no">不合格</span>') + '</td>' +
+            '<td>' + fmtTime(r.used) + '</td></tr>';
+        }).join('') + '</tbody></table></div>' : '<div class="empty" style="padding:14px;color:var(--ink-400)">暂无考试记录</div>';
+
+      setHTML(crumb([{ t: '个人中心', go: 'personal' }, { t: '学习报告' }]) +
+        '<div class="page-hd"><div><h2>学习报告</h2><div class="sub">基于你本机的考试与刷题数据汇总</div></div>' +
+        _nsTabs(ns) + '</div>' +
+        '<div class="stat-grid">' +
+          statCard('累计答题', totalQ + '题', '合计', 'm-blue') +
+          statCard('总体正确率', acc + '%', '答对 / (答对+答错)', 'm-violet') +
+          statCard('考试次数', recs.length + '场', '合格 ' + passCnt + ' 场', 'm-study') +
+          statCard('考试平均分', avg + '分', '最高 ' + best + ' 分', 'm-records') +
+          statCard('错题总数', wrongs.length + '题', '跨 ' + _uniqNs(wrongs) + ' 模块', 'm-wrong') +
+          statCard('收藏总数', favs.length + '题', '重点题目', 'm-fav') +
+        '</div>' +
+        '<div class="card pad" style="margin-top:18px"><div style="font-weight:600;margin-bottom:10px">各模块统计</div>' +
+          '<div class="ns-stats">' +
+            nsStatBlock('日常培训考核', dailyStat) +
+            nsStatBlock('关键岗位人员考试', kpStat) +
+          '</div></div>' +
+        '<div class="card pad" style="margin-top:18px"><div style="font-weight:600;margin-bottom:10px">近期考试</div>' + recentHtml + '</div>');
+      $$('.ns-tab').forEach(function (b) {
+        b.onclick = function () {
+          var n = b.getAttribute('data-ns');
+          Router.current = { view: 'personalStudy', params: { ns: n } };
+          Views.personalStudy();
+        };
+      });
+    });
+  };
+  function _uniqNs(items) {
+    var s = {}; items.forEach(function (i) { s[i.ns] = 1; });
+    return Object.keys(s).map(function (k) { return k === 'daily' ? '日常' : '关键岗位'; }).join('、') || '—';
+  }
+  function statCard(t, big, sub, cls) {
+    return '<div class="pstat ' + cls + '"><div class="pstat-t">' + esc(t) + '</div>' +
+      '<div class="pstat-b">' + esc(big) + '</div>' +
+      '<div class="pstat-s">' + esc(sub) + '</div></div>';
+  }
+  function nsStatBlock(name, s) {
+    return '<div class="ns-stat">' +
+      '<div class="ns-stat-name">' + esc(name) + '</div>' +
+      '<div class="ns-stat-grid">' +
+        '<div><b>' + s.n + '</b><span>考试次数</span></div>' +
+        '<div><b>' + s.avg + '</b><span>平均分</span></div>' +
+        '<div><b>' + s.best + '</b><span>最高分</span></div>' +
+        '<div><b>' + s.pass + '%</b><span>合格率</span></div>' +
+      '</div></div>';
+  }
+
+  /* ============ 考试记录 ============ */
+  Views.personalRecords = function () {
+    if (!_session) return go('login');
+    var ns = (Router.current && Router.current.params && Router.current.params.ns) || 'all';
+    var sess = _session;
+    Promise.all([myRecords()]).then(function (rs) {
+      var recs = rs[0] || [];
+      if (ns !== 'all') recs = recs.filter(function (r) { return r.ns === ns; });
+      // 详情数据来自 rec.paper / rec.detail，showResult 直接读取，url 参数 recId 通过 L.UI 暂存
+      var html = crumb([{ t: '个人中心', go: 'personal' }, { t: '考试记录' }]) +
+        '<div class="page-hd"><div><h2>考试记录</h2><div class="sub">' + (sess.name || '考生') +
+          (sess.no ? ' · ' + esc(sess.no) : '') + (sess.dept ? ' · ' + esc(sess.dept) : '') +
+          '　|　共 <b style="color:var(--green-700)">' + recs.length + '</b> 场考试</div></div>' +
+        _nsTabs(ns) + '</div>';
+      if (!recs.length) {
+        html += '<div class="empty"><div class="big">暂无考试记录</div><div>参加一场考试后，成绩会自动保存到这里。</div></div>';
+      } else {
+        html += '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>日期</th><th>模块</th><th>试卷 / 类别</th><th>成绩</th><th>合格线</th><th>结果</th><th>用时</th><th>切屏</th><th>操作</th></tr></thead><tbody>';
+        recs.forEach(function (r) {
+          html += '<tr><td>' + fmtDate(r.ts) + '</td>' +
+            '<td>' + (r.ns === 'keypost' ? '关键岗位' : '日常培训') + '</td>' +
+            '<td>' + esc(r.title || '—') + (r.category ? '　<span class="chip gray">' + esc(r.category) + '</span>' : '') + '</td>' +
+            '<td><b>' + r.score + '</b>/' + r.total + '</td>' +
+            '<td>' + (r.passScore != null ? r.passScore : (r.subs ? '分项' : '—')) + '</td>' +
+            '<td>' + (r.pass ? '<span class="tag ok">合格</span>' : '<span class="tag no">不合格</span>') + (r.auto ? ' <span class="chip gray">自动</span>' : '') + '</td>' +
+            '<td>' + fmtTime(r.used || 0) + '</td>' +
+            '<td>' + (r.switches || 0) + '</td>' +
+            '<td><button class="btn outline sm" data-detail="' + r.id + '">查看详情</button></td></tr>';
+        });
+        html += '</tbody></table></div>';
+      }
+      setHTML(html);
+      $$('.ns-tab').forEach(function (b) {
+        b.onclick = function () {
+          var n = b.getAttribute('data-ns');
+          Router.current = { view: 'personalRecords', params: { ns: n } };
+          Views.personalRecords();
+        };
+      });
+      $$('[data-detail]').forEach(function (b) {
+        b.onclick = function () {
+          var id = b.getAttribute('data-detail');
+          var rec = recs.filter(function (r) { return r.id === id; })[0];
+          if (rec) showResult(rec);
+        };
+      });
+    });
+  };
+
   Views.home = function () {
+    // 已登录：渲染个人中心
+    if (_session) { renderPersonal(); return; }
+
     var kp = L.Bank.list('keypost'), daily = L.Bank.list('daily');
     var kpN = kp.reduce(function (s, b) { return s + b.total; }, 0);
     var dN = daily.reduce(function (s, b) { return s + b.total; }, 0);
@@ -202,7 +592,7 @@
     toast('登录成功，欢迎 ' + who.name, 'ok');
     var q; try { q = new URLSearchParams(location.search); } catch (e) { q = null; }
     if (q && (q.get('post') || q.get('daily'))) deepLink();
-    else go('home');
+    else go('personal');
   }
   function doLogout() {
     _session = null;
@@ -778,8 +1168,7 @@
       var pos = effPos();
       var needD = Object.keys(pos.plan).indexOf('D') >= 0;
       var isExt = state.type === 'extend';
-      var hasD = isExt || needD;
-      var secD = '三', secStu = hasD ? '四' : '三';
+      var secStu = '三';
       setHTML(
         crumb([{ t: '首页', go: 'home' }, { t: '关键岗位人员考试', go: 'keypost' }, { t: '考试模式' }]) +
         '<div class="page-hd"><div><h2>关键岗位人员考试 · 组卷设置</h2>' +
@@ -810,18 +1199,6 @@
         : '') +
         '</div>' +
 
-        (hasD ?
-          '<div class="card pad" style="margin-bottom:16px">' +
-          '<div style="font-size:13.5px;font-weight:600;margin-bottom:10px">' + secD + '、科目D 专业类别</div>' +
-          '<div style="display:flex;gap:14px;flex-wrap:wrap">' +
-          '<label class="fld" style="flex:1;min-width:240px;margin:0"><span>专业大类</span><select id="selMajor">' +
-          Object.keys(majors).map(function (m) { return '<option value="' + esc(m) + '"' + (state.major === m ? ' selected' : '') + '>' + esc(m) + '</option>'; }).join('') +
-          '</select></label>' +
-          '<label class="fld" style="flex:2;min-width:280px;margin:0"><span>二级类别（题库）</span><select id="selCat">' + catOptions() + '</select></label>' +
-          '</div>' +
-          '<div style="margin-top:10px;font-size:12.5px;color:var(--ink-400)">' + (isExt ? '扩领域考试仅考一个专业大类（科目D）。' : '大纲 4.2.2：技术负责人、授权签字人每次考试科目D 只能考试一个专业大类。') + '</div>' +
-          '</div>' : '') +
-
         '<div class="card pad">' +
         '<div style="font-size:13.5px;font-weight:600;margin-bottom:12px">' + secStu + '、考生信息</div>' +
         '<div class="grid g3">' +
@@ -846,10 +1223,6 @@
         if (sv.value && sv.value === state.main) { state.vice = ''; toast('兼任岗位不能与报考岗位相同，已取消兼任', 'err'); render(); return; }
         state.vice = sv.value; render();
       };
-      var smj = $('#selMajor');
-      if (smj) smj.onchange = function () { state.major = smj.value; state.cat = (majors[state.major][0] || {}).id || ''; render(); };
-      var sc = $('#selCat');
-      if (sc) sc.onchange = function () { state.cat = sc.value; };
 
       var isExt2 = state.type === 'extend';
       var infoPlan = isExt2 ? L.Engine.EXTEND_PLAN : pos.plan;
@@ -860,43 +1233,133 @@
       $('#startExam').onclick = function () {
         var name = ($('#exName').value || '').trim();
         if (!name) return toast('请填写考生姓名', 'err');
-        if ((state.type === 'extend' || needD) && !state.cat) return toast('请选择科目D 专业类别', 'err');
-        prepareKPExam(state, {
+        openRangeModal(state, {
           name: name, no: ($('#exNo').value || '').trim(), dept: ($('#exDept').value || '').trim()
         });
       };
     }
+
+    /* 考试范围弹窗：可多选题库，按大纲配比自动组题 */
+    function openRangeModal(state, who) {
+      var cfg = L.Bank.cfg.keypost;
+      var isExt = state.type === 'extend';
+      var pos = effPos();
+      var banks = L.Bank.list('keypost');
+      var bankMap = {}; banks.forEach(function (b) { bankMap[b.id] = b; });
+      var baseBanks = banks.filter(function (b) { return b.subject !== 'D'; });
+      var dMajors = {};
+      banks.filter(function (b) { return b.subject === 'D'; }).forEach(function (b) {
+        (dMajors[b.major || '其他'] = dMajors[b.major || '其他'] || []).push(b);
+      });
+      var basePlan = isExt ? L.Engine.EXTEND_PLAN : pos.plan;
+
+      // 默认选中：岗位配比涉及的公共科目 + 一个科目D（深度链接优先，否则首个）
+      var selSet = {};
+      baseBanks.forEach(function (b) { if (basePlan[b.subject]) selSet[b.id] = true; });
+      if (basePlan.D) {
+        var defD = null;
+        if (_deep && _deep.cat) {
+          var fb = banks.filter(function (b) { return b.id === _deep.cat || b.name === _deep.cat; })[0];
+          if (fb) defD = fb;
+        }
+        if (!defD && state.major && dMajors[state.major]) defD = dMajors[state.major][0];
+        if (!defD) { var allD = []; Object.keys(dMajors).forEach(function (m) { allD = allD.concat(dMajors[m]); }); if (allD.length) defD = allD[0]; }
+        if (defD) selSet[defD.id] = true;
+      }
+
+      function chip(b) {
+        return '<span class="chip rng' + (selSet[b.id] ? ' on' : '') + '" data-bank="' + esc(b.id) + '" data-sub="' + b.subject + '">' + esc(b.name) + '</span>';
+      }
+      var pubHtml = isExt ? '' :
+        '<div class="rng-grp-label">公共科目（A / B / C）</div>' +
+        '<div class="rng-chips">' + baseBanks.map(chip).join('') + '</div>';
+      var dHtml = Object.keys(dMajors).map(function (m) {
+        return '<div style="margin-bottom:12px"><div class="rng-grp-label">' + esc(m) + '</div><div class="rng-chips">' + dMajors[m].map(chip).join('') + '</div></div>';
+      }).join('');
+
+      var html =
+        '<div style="font-size:13px;color:var(--ink-500);margin-bottom:14px">系统将按《大纲》「' + esc(pos.name) + '」岗位配比，从你勾选的题库中自动组题。</div>' +
+        pubHtml +
+        '<div class="rng-grp-label" style="margin-top:16px">科目D · 专业类别（可多选）</div>' +
+        dHtml +
+        '<div id="rngSummary" class="rng-summary"></div>';
+
+      function updateSummary() {
+        var byS = { A: [], B: [], C: [], D: [] };
+        Object.keys(selSet).forEach(function (id) { var b = bankMap[id]; if (b && byS[b.subject]) byS[b.subject].push(b); });
+        var parts = [];
+        ['A', 'B', 'C', 'D'].forEach(function (s) {
+          var need = basePlan[s]; if (!need) return;
+          var arr = byS[s]; if (!arr.length) return;
+          var tot = (need[1] || 0) + (need[2] || 0) + (need[3] || 0);
+          var names = arr.map(function (b) { return b.subject === 'D' ? (b.major + '·' + b.name) : b.name; });
+          parts.push('科目' + s + ' <b>' + tot + '</b> 题（' + names.join('、') + '）');
+        });
+        var total = parts.reduce(function (s2, p) { var m = p.match(/<b>(\d+)<\/b>/); return s2 + (m ? +m[1] : 0); }, 0);
+        var el = document.getElementById('rngSummary');
+        if (!el) return;
+        el.innerHTML = parts.length ? ('本场共 <b>' + total + '</b> 题：' + parts.join('；')) : '<span style="color:var(--red)">请至少勾选一个考试科目</span>';
+      }
+
+      var p = modal({
+        title: '本次考试内容', html: html, lock: true,
+        buttons: [{ text: '取消', value: false }, { text: '开始考试', primary: true, value: true }]
+      });
+      $$('#modalBody .chip.rng').forEach(function (el) {
+        el.onclick = function () {
+          var id = el.getAttribute('data-bank');
+          if (selSet[id]) { delete selSet[id]; el.classList.remove('on'); }
+          else { selSet[id] = true; el.classList.add('on'); }
+          updateSummary();
+        };
+      });
+      updateSummary();
+
+      p.then(function (v) {
+        if (!v) return;
+        var sel = { A: [], B: [], C: [], D: [] };
+        Object.keys(selSet).forEach(function (id) {
+          var b = bankMap[id]; if (b) sel[b.subject].push(id);
+        });
+        var hasAny = ['A', 'B', 'C', 'D'].some(function (s) { return sel[s].length; });
+        if (!hasAny) { toast('请至少选择一个考试科目', 'err'); return; }
+        prepareKPExam(state, who, sel);
+      });
+    }
+
     render();
   };
 
-  function prepareKPExam(state, who) {
+  function prepareKPExam(state, who, sel) {
     var cfg = L.Bank.cfg.keypost;
     var isExt = state.type === 'extend';
     var pos = L.Bank.getPosition(state.post) || { name: state.post, plan: {} };
-    var banks = L.Bank.list('keypost');
-    var pools = {};
+    var basePlan = isExt ? L.Engine.EXTEND_PLAN : pos.plan;
+    // 仅保留选中科目对应的《大纲》配比段
+    var planObj = {};
+    ['A', 'B', 'C', 'D'].forEach(function (s) {
+      if (sel[s] && sel[s].length && basePlan[s]) planObj[s] = basePlan[s];
+    });
+    if (!Object.keys(planObj).length) { toast('请至少选择一个考试科目', 'err'); return; }
+
     var jobs = [];
-    if (isExt) {
-      // 扩领域考试：仅抽科目D 一个专业大类
-      jobs.push(L.Bank.questionsOf(state.cat ? [state.cat] : []).then(function (qs) { pools.D = qs; }));
-    } else {
-      ['A', 'B', 'C'].forEach(function (s) {
-        var ids = banks.filter(function (b) { return b.subject === s && !b.major; }).map(function (b) { return b.id; });
-        jobs.push(L.Bank.questionsOf(ids).then(function (qs) { pools[s] = qs; }));
-      });
-      jobs.push(L.Bank.questionsOf(state.cat ? [state.cat] : []).then(function (qs) { pools.D = qs; }));
-    }
+    var pools = {};
+    ['A', 'B', 'C', 'D'].forEach(function (s) {
+      if (!sel[s] || !sel[s].length) return;
+      jobs.push(L.Bank.questionsOf(sel[s]).then(function (qs) { pools[s] = qs; }));
+    });
 
     Promise.all(jobs).then(function () {
       var paper = L.Engine.buildPaper({
-        mode: isExt ? 'extend' : 'first', post: state.post, pool: pools,
-        planObj: isExt ? null : pos.plan,
-        postName: pos.name,
+        mode: 'custom',
+        plan: planObj,
+        scoreMap: isExt ? L.Engine.SCORE_EXTEND : L.Engine.SCORE_FIRST,
+        title: (isExt ? '扩领域考试' : '首次考试') + ' · ' + pos.name,
         minutes: isExt ? cfg.extendMin : cfg.firstMin,
+        pool: pools,
         shuffleOptions: cfg.shuffleOptions
       });
-      var catMeta = state.cat ? L.Bank.meta('keypost', state.cat) : null;
-      paper.category = catMeta ? (catMeta.major + ' / ' + catMeta.name) : '';
+      paper.category = '';
       if (paper.warn.length) {
         modal({
           title: '题量提示', lock: true,

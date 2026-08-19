@@ -33,7 +33,7 @@
         if (L.UI.adminLoggedIn && L.UI.adminLoggedIn()) {
           L.Admin.enter();
         } else if (L.UI.isLoggedIn()) {
-          L.UI.go('home');
+          L.UI.go('personal');
           if (L.UI.deepLink && L.UI.deepLink()) { /* 已跳转至对应考试设置页 */ }
         } else {
           L.UI.go('login');
