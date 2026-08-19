@@ -315,16 +315,12 @@
       '<div class="lc-tabs">' +
       '<button class="lc-tab" data-tab="reg">注册</button>' +
       '<button class="lc-tab" data-tab="fp">忘记密码</button>' +
-      '<a id="toAdmin" style="flex:0 0 auto;align-self:center;padding:8px 10px;border-radius:8px;color:var(--green-800);font-size:13.5px;font-weight:600;text-decoration:none;cursor:pointer">管理员登录 →</a>' +
       '</div>' +
       '<div class="lc-tip">登录后将以该身份参加考试，成绩与答卷记入你的考试档案，可在「后台管理 → 考试记录」中查询、打印存档。</div>' +
 
       '</div>' +
       '</div>'
     );
-    var toAdmin = document.getElementById('toAdmin');
-    if (toAdmin) toAdmin.onclick = function () { go('adminLogin'); };
-
     function switchTab(t) {
       $$('.lc-tab').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-tab') === t); });
       $('#loginPane').classList.toggle('hidden', t !== 'login');
@@ -342,9 +338,18 @@
       if (!user) { setErr('loginErr', '请输入用户名'); return; }
       setErr('loginErr', '');
       L.Bank.accounts.get(user).then(function (acc) {
-        if (!acc) { setErr('loginErr', '账号不存在，请先注册'); return; }
-        if (L.pwHash(pw) !== acc.pass) { setErr('loginErr', '账号或密码错误'); return; }
-        doLogin({ user: acc.user, name: acc.name, no: acc.no || '', dept: acc.dept || '', guest: false });
+        // 学员账户命中 → 正常进入考生首页
+        if (acc) {
+          if (L.pwHash(pw) !== acc.pass) { setErr('loginErr', '账号或密码错误'); return; }
+          doLogin({ user: acc.user, name: acc.name, no: acc.no || '', dept: acc.dept || '', guest: false });
+          return;
+        }
+        // 学员账户不存在 → 回退校验管理员账户，命中则直接进入后台
+        return L.Bank.admins.get(user).then(function (aAcc) {
+          if (!aAcc) { setErr('loginErr', '账号不存在，请先注册'); return; }
+          if (L.pwHash(pw) !== aAcc.pass) { setErr('loginErr', '账号或密码错误'); return; }
+          adminLogin(aAcc).then(function () { L.Admin.enter(); });
+        });
       });
     }
     $('#btnLogin').onclick = tryLogin;
