@@ -146,6 +146,36 @@
   /* 错题本 / 收藏 */
   function loadSet(key) { return L.Store.get(key).then(function (v) { return v || {}; }); }
 
+  /* 刷题 / 考试全局统计：累计刷题、未刷题、错题 */
+  function loadNsStats(ns) {
+    return Promise.all([
+      Promise.resolve(L.Bank.list(ns)),
+      loadSet('wrong:' + ns),
+      loadSet('practiced:' + ns)
+    ]).then(function (r) {
+      var banks = r[0], wrong = r[1], prac = r[2];
+      var total = 0; banks.forEach(function (b) { total += (b.total || 0); });
+      var practiced = 0; for (var k in prac) if (prac[k]) practiced++;
+      var wrongN = 0; for (var k2 in wrong) if (wrong[k2]) wrongN++;
+      return {
+        total: total,
+        practiced: practiced,
+        unpracticed: Math.max(0, total - practiced),
+        wrong: wrongN
+      };
+    });
+  }
+  function progBarHTML(st) {
+    function cell(n, label, color) {
+      return '<div class="prog-cell"><div class="pn" style="color:' + color + '">' + n + '</div><div class="pl">' + label + '</div></div>';
+    }
+    return '<div class="prog-bar">' +
+      cell(st.practiced, '累计刷题', 'var(--green-700)') +
+      cell(st.unpracticed, '未刷题', 'var(--ink-500)') +
+      cell(st.wrong, '错题', 'var(--red)') +
+      '</div>';
+  }
+
   /* ============ 首页 ============ */
   var Views = {};
 
@@ -514,7 +544,9 @@
     setHTML(
       crumb([{ t: '首页', go: 'home' }, { t: isKP ? '关键岗位人员考试' : '日常培训考核', go: ns }, { t: '刷题模式' }]) +
       '<div class="page-hd"><div><h2>刷题模式 · 选择题库</h2><div class="sub">可多选，选中的题库将合并练习</div></div>' +
-      '<div style="display:flex;gap:8px"><button class="btn ghost sm" id="selAll">全选</button><button class="btn ghost sm" id="selNone">清空</button></div></div>' +
+      '<div style="display:flex;gap:8px"><button class="btn ghost sm" id="selAll">全选</button><button class="btn ghost sm" id="selNone">清空</button>' +
+      '<button class="btn sm" id="killWrong" style="margin-left:auto">消灭错题</button></div></div>' +
+      '<div class="card pad" id="progCard" style="margin-bottom:16px"></div>' +
       '<div class="card pad" id="bankBox">' + groupHTML() + '</div>' +
       '<div class="card pad" style="margin-top:16px">' +
       '<div style="display:flex;gap:22px;align-items:flex-end;flex-wrap:wrap">' +
@@ -543,6 +575,13 @@
     });
     $('#selAll').onclick = function () { banks.forEach(function (b) { sel[b.id] = 1; }); $$('#bankBox .pick').forEach(function (e) { e.classList.add('on'); }); refresh(); };
     $('#selNone').onclick = function () { sel = {}; $$('#bankBox .pick').forEach(function (e) { e.classList.remove('on'); }); refresh(); };
+    loadNsStats(ns).then(function (st) {
+      var pc = $('#progCard');
+      if (pc) pc.innerHTML = progBarHTML(st) + '<div style="margin-top:10px;font-size:12.5px;color:var(--ink-400)">累计刷题＝已练过的去重题数；未刷题＝题库总量－累计刷题；错题＝当前错题本数量。点「消灭错题」可专练错题本直至清空。</div>';
+    });
+    $('#killWrong').onclick = function () {
+      startPractice(ns, banks.map(function (b) { return b.id; }), { order: 'rand', ftype: 0, scope: 'wrong', limit: '', shuffleOpt: true });
+    };
     $('#startPractice').onclick = function () {
       var ids = Object.keys(sel);
       if (!ids.length) return toast('请至少选择一个题库', 'err');
@@ -562,9 +601,10 @@
       L.Bank.questionsOf(bankIds),
       loadSet('wrong:' + ns),
       loadSet('fav:' + ns),
+      loadSet('practiced:' + ns),
       L.Store.get('prog:' + ns + ':' + L.hash(bankIds.slice().sort().join(',')))
     ]).then(function (r) {
-      var qs = r[0].slice(), wrong = r[1], fav = r[2], prog = r[3];
+      var qs = r[0].slice(), wrong = r[1], fav = r[2], prac = r[3], prog = r[4];
       if (opt.ftype) qs = qs.filter(function (q) { return q.t === opt.ftype; });
       if (opt.scope === 'wrong') qs = qs.filter(function (q) { return wrong[q.id]; });
       if (opt.scope === 'fav') qs = qs.filter(function (q) { return fav[q.id]; });
@@ -579,7 +619,7 @@
       P = {
         ns: ns, ids: bankIds, key: 'prog:' + ns + ':' + L.hash(bankIds.slice().sort().join(',')),
         qs: qs, i: (opt.order === 'seq' && opt.scope === 'all' && prog && prog.i < qs.length) ? prog.i : 0,
-        ans: {}, judged: {}, wrong: wrong, fav: fav, opt: opt,
+        ans: {}, judged: {}, wrong: wrong, fav: fav, prac: prac, opt: opt,
         stat: { right: 0, wrong: 0 }
       };
       renderPractice();
@@ -707,6 +747,7 @@
     P.judged[P.i] = { ok: ok };
     if (ok) { P.stat.right++; if (P.wrong[q.id]) { delete P.wrong[q.id]; L.Store.set('wrong:' + P.ns, P.wrong); } }
     else { P.stat.wrong++; P.wrong[q.id] = (P.wrong[q.id] || 0) + 1; L.Store.set('wrong:' + P.ns, P.wrong); }
+    if (!P.prac[q.id]) { P.prac[q.id] = 1; L.Store.set('practiced:' + P.ns, P.prac); }
     drawPQ(); saveProg();
   }
   function saveProg() { L.Store.set(P.key, { i: P.i, ts: Date.now() }); }
@@ -749,6 +790,7 @@
     var dBanks = banks.filter(function (b) { return b.subject === 'D'; });
     var majors = {};
     dBanks.forEach(function (b) { (majors[b.major || '其他'] = majors[b.major || '其他'] || []).push(b); });
+    var _kpStats = null;
 
     var state = { type: 'first', main: 'top', vice: '', post: 'top', major: Object.keys(majors)[0] || '', cat: '' };
     if (state.major && majors[state.major]) state.cat = majors[state.major][0].id;
@@ -784,6 +826,7 @@
         crumb([{ t: '首页', go: 'home' }, { t: '关键岗位人员考试', go: 'keypost' }, { t: '考试模式' }]) +
         '<div class="page-hd"><div><h2>关键岗位人员考试 · 组卷设置</h2>' +
         '<div class="sub">组卷规则依据《湖南省检验检测机构关键岗位人员考试大纲（2025年版）》4.2 与 4.2.1.5（兼任）</div></div></div>' +
+        '<div class="card pad" id="progCard" style="margin-bottom:16px"></div>' +
 
         '<div class="card pad" style="margin-bottom:16px">' +
         '<div style="font-size:13.5px;font-weight:600;margin-bottom:10px">一、考试类型</div>' +
@@ -824,6 +867,7 @@
 
         '<div class="card pad">' +
         '<div style="font-size:13.5px;font-weight:600;margin-bottom:12px">' + secStu + '、考生信息</div>' +
+        '<label style="display:flex;align-items:center;gap:7px;font-size:13.5px;margin-bottom:12px"><input type="checkbox" id="priWeak" style="width:auto" checked> 优先组卷错题和未刷过的题目</label>' +
         '<div class="grid g3">' +
         '<label class="fld"><span>姓名<b style="color:var(--red)">*</b></span><input type="text" id="exName" placeholder="请输入考生姓名" value="' + esc((_session && _session.name) || '') + '"></label>' +
         '<label class="fld"><span>身份证号 / 工号</span><input type="text" id="exNo" placeholder="选填" value="' + esc((_session && _session.no) || '') + '"></label>' +
@@ -861,11 +905,16 @@
         var name = ($('#exName').value || '').trim();
         if (!name) return toast('请填写考生姓名', 'err');
         if ((state.type === 'extend' || needD) && !state.cat) return toast('请选择科目D 专业类别', 'err');
-        prepareKPExam(state, {
-          name: name, no: ($('#exNo').value || '').trim(), dept: ($('#exDept').value || '').trim()
-        });
-      };
+      prepareKPExam(state, {
+        name: name, no: ($('#exNo').value || '').trim(), dept: ($('#exDept').value || '').trim()
+      });
+      var pcv = $('#progCard'); if (pcv && _kpStats) pcv.innerHTML = progBarHTML(_kpStats);
+    };
     }
+    loadNsStats('keypost').then(function (st) {
+      _kpStats = st;
+      var pcv2 = $('#progCard'); if (pcv2) pcv2.innerHTML = progBarHTML(st);
+    });
     render();
   };
 
@@ -875,7 +924,10 @@
     var pos = L.Bank.getPosition(state.post) || { name: state.post, plan: {} };
     var banks = L.Bank.list('keypost');
     var pools = {};
+    var wkWrong = null, wkPrac = null;
     var jobs = [];
+    jobs.push(loadSet('wrong:keypost').then(function (s) { wkWrong = s; }));
+    jobs.push(loadSet('practiced:keypost').then(function (s) { wkPrac = s; }));
     if (isExt) {
       // 扩领域考试：仅抽科目D 一个专业大类
       jobs.push(L.Bank.questionsOf(state.cat ? [state.cat] : []).then(function (qs) { pools.D = qs; }));
@@ -888,12 +940,15 @@
     }
 
     Promise.all(jobs).then(function () {
+      var prioritize = $('#priWeak') ? $('#priWeak').checked : true;
       var paper = L.Engine.buildPaper({
         mode: isExt ? 'extend' : 'first', post: state.post, pool: pools,
         planObj: isExt ? null : pos.plan,
         postName: pos.name,
         minutes: isExt ? cfg.extendMin : cfg.firstMin,
-        shuffleOptions: cfg.shuffleOptions
+        shuffleOptions: cfg.shuffleOptions,
+        wrongSet: prioritize ? wkWrong : null,
+        practicedSet: prioritize ? wkPrac : null
       });
       var catMeta = state.cat ? L.Bank.meta('keypost', state.cat) : null;
       paper.category = catMeta ? (catMeta.major + ' / ' + catMeta.name) : '';
@@ -927,6 +982,7 @@
     var posPlans = plans.filter(function (p) { return p.kind === 'position'; });
     var customPlans = plans.filter(function (p) { return p.kind !== 'position'; });
     var state = { pos: posPlans.length ? 0 : -1 };
+    var _dailyStats = null;
 
     function subMinutes(sub) {
       var n = (sub.n[1] || 0) + (sub.n[2] || 0) + (sub.n[3] || 0);
@@ -960,6 +1016,7 @@
       setHTML(
         crumb([{ t: '首页', go: 'home' }, { t: '日常培训考核', go: 'daily' }, { t: '考试模式' }]) +
         '<div class="page-hd"><div><h2>日常培训考核 · 考试</h2><div class="sub">选择报考岗位与专项，系统随机组卷；三个专项单独考试、单独计时、单独判定合格</div></div></div>' +
+        '<div class="card pad" id="progCard" style="margin-bottom:16px"></div>' +
 
         // 一、考试类型（原 三、选择专项考试）
         (posPlans.length ?
@@ -980,6 +1037,7 @@
         // 三、考生信息（移到最后）
         (posPlans.length ?
           '<div class="card pad" style="margin-bottom:16px"><div style="font-size:13.5px;font-weight:600;margin-bottom:12px">三、考生信息</div>' +
+          '<label style="display:flex;align-items:center;gap:7px;font-size:13.5px;margin-bottom:12px"><input type="checkbox" id="priWeak" style="width:auto" checked> 优先组卷错题和未刷过的题目</label>' +
           '<div class="grid g3">' +
           '<label class="fld"><span>姓名<b style="color:var(--red)">*</b></span><input type="text" id="exName" placeholder="请输入姓名" value="' + esc((_session && _session.name) || '') + '"></label>' +
           '<label class="fld"><span>工号</span><input type="text" id="exNo" placeholder="选填" value="' + esc((_session && _session.no) || '') + '"></label>' +
@@ -1016,15 +1074,19 @@
         };
       });
       var t2 = $('#toAdmin2'); if (t2) t2.onclick = function () { L.Admin.enter('dailyPlan'); };
+      var dpv = $('#progCard'); if (dpv && _dailyStats) dpv.innerHTML = progBarHTML(_dailyStats);
     }
 
     function startDailySubExam(pos, sub, who, cfg) {
       var bankIds = (sub.banks && sub.banks.length) ? sub.banks.slice() : ['D1'];
-      L.Bank.questionsOf(bankIds).then(function (qs) {
+      Promise.all([L.Bank.questionsOf(bankIds), loadSet('wrong:daily'), loadSet('practiced:daily')]).then(function (r) {
+        var qs = r[0], wkWrong = r[1], wkPrac = r[2];
+        var prioritize = $('#priWeak') ? $('#priWeak').checked : true;
         var plan = { kind: 'position', name: sub.name, subs: [sub], scoreMap: pos.scoreMap || { 1: 1, 2: 1, 3: 1 }, pass: 'all' };
         var paper = L.Engine.buildPaper({
           mode: 'custom', title: pos.position + ' · ' + sub.name, minutes: subMinutes(sub),
-          plan: plan, pool: qs, shuffleOptions: cfg.shuffleOptions
+          plan: plan, pool: qs, shuffleOptions: cfg.shuffleOptions,
+          wrongSet: prioritize ? wkWrong : null, practicedSet: prioritize ? wkPrac : null
         });
         var examCfg = { switchLimit: cfg.switchLimit, antiCopy: cfg.antiCopy };
         var run = function () { startExam('daily', paper, who, examCfg); };
@@ -1040,11 +1102,14 @@
     }
 
     function startDailyCustomExam(p, who, cfg) {
-      L.Bank.questionsOf(p.banks || []).then(function (qs) {
+      Promise.all([L.Bank.questionsOf(p.banks || []), loadSet('wrong:daily'), loadSet('practiced:daily')]).then(function (r) {
+        var qs = r[0], wkWrong = r[1], wkPrac = r[2];
+        var prioritize = $('#priWeak') ? $('#priWeak').checked : true;
         var paper = L.Engine.buildPaper({
           mode: 'custom', title: p.name, minutes: p.minutes,
           plan: { X: { 1: p.n1, 2: p.n2, 3: p.n3 } },
-          scoreMap: { 1: p.s1, 2: p.s2, 3: p.s3 }, pool: { X: qs }, shuffleOptions: cfg.shuffleOptions
+          scoreMap: { 1: p.s1, 2: p.s2, 3: p.s3 }, pool: { X: qs }, shuffleOptions: cfg.shuffleOptions,
+          wrongSet: prioritize ? wkWrong : null, practicedSet: prioritize ? wkPrac : null
         });
         paper.passScore = p.pass;
         var examCfg = { switchLimit: cfg.switchLimit, antiCopy: cfg.antiCopy, passScore: p.pass };
@@ -1060,6 +1125,10 @@
       });
     }
 
+    loadNsStats('daily').then(function (st) {
+      _dailyStats = st;
+      var dpv2 = $('#progCard'); if (dpv2) dpv2.innerHTML = progBarHTML(st);
+    });
     render();
   };
 

@@ -109,6 +109,19 @@
       minutes = spec.minutes;
     }
 
+    var wrongSet = spec.wrongSet || null, pracSet = spec.practicedSet || null;
+    // 弱项优先：错题 + 未刷过的题排到候选池最前，组卷时优先抽中
+    function order4pick(cand) {
+      if (!wrongSet && !pracSet) { shuffle(cand); return cand; }
+      var pri = [], nor = [];
+      cand.forEach(function (q) {
+        var weak = (wrongSet && wrongSet[q.id]) || (pracSet && !pracSet[q.id]);
+        if (weak) pri.push(q); else nor.push(q);
+      });
+      shuffle(pri); shuffle(nor);
+      return pri.concat(nor);
+    }
+
     var pool = spec.pool;   // 旧模式 { A:[q...], ... }；岗位模式为全部题目的数组
     var sections = [], all = [], warn = [];
 
@@ -134,7 +147,7 @@
               return q.t === t && numId(q.id) >= lo && numId(q.id) <= hi;
             });
           }
-          var sel = pick(cand, n);
+          var sel = order4pick(cand).slice(0, Math.min(n, cand.length));
           if (sel.length < n) warn.push(sub.name + ' ' + L.Bank.typeName(t) + ' 题量不足（需 ' + n + ' 题，实有 ' + sel.length + ' 题）');
           got = got.concat(sel);
         });
@@ -183,7 +196,7 @@
       [1, 2, 3].forEach(function (t) {
         var n = need[t] || 0;
         if (!n) return;
-        var sel = pick(byT[t], n);
+        var sel = order4pick(byT[t]).slice(0, Math.min(n, byT[t].length));
         if (sel.length < n) warn.push('科目' + sub + ' ' + L.Bank.typeName(t) + ' 题量不足（需 ' + n + ' 题，实有 ' + sel.length + ' 题）');
         got = got.concat(sel);
       });

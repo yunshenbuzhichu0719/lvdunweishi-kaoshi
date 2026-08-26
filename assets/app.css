@@ -244,6 +244,10 @@ table.tbl tr:hover td{background:#fafcfb}
 .sc-box{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:16px;text-align:center}
 .sc-box b{display:block;font-size:22px;color:var(--ink-900);font-weight:700}
 .sc-box span{font-size:12px;color:var(--ink-400)}
+.prog-bar{display:flex;gap:14px;flex-wrap:wrap}
+.prog-bar .prog-cell{flex:1;min-width:120px;background:var(--line-2,#eef2ef);border:1px solid var(--line);border-radius:var(--radius-sm);padding:14px 16px;text-align:center}
+.prog-bar .pn{font-size:26px;font-weight:800;line-height:1.1}
+.prog-bar .pl{font-size:12.5px;color:var(--ink-400);margin-top:4px}
 
 .review-item{border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;margin-bottom:12px;background:#fff}
 .review-item.bad{border-left:4px solid var(--red)}
