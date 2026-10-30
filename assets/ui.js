@@ -506,6 +506,10 @@
     var isKP = ns === 'keypost';
     var banks = L.Bank.list(ns);
     var sel = {};
+    var dMajors = {};
+    banks.filter(function (b) { return b.subject === 'D'; }).forEach(function (b) {
+      (dMajors[b.major || '其他'] = dMajors[b.major || '其他'] || []).push(b);
+    });
 
     function groupHTML() {
       if (!banks.length) return '<div class="empty"><div class="big">暂无题库</div><div>请先在后台上传题库。</div></div>';
@@ -519,14 +523,16 @@
         html += '<h4 style="margin:20px 0 10px;font-size:14px;color:var(--ink-700)">' + esc(L.Engine.SUBJECT_NAME[s]) + '</h4>' +
           '<div class="grid g3">' + g.map(cardHTML).join('') + '</div>';
       });
-      var majors = {};
-      banks.filter(function (b) { return b.subject === 'D'; }).forEach(function (b) {
-        (majors[b.major || '其他'] = majors[b.major || '其他'] || []).push(b);
-      });
-      Object.keys(majors).forEach(function (m) {
-        html += '<h4 style="margin:22px 0 10px;font-size:14px;color:var(--ink-700)">科目D · ' + esc(m) + '</h4>' +
-          '<div class="grid g3">' + majors[m].map(cardHTML).join('') + '</div>';
-      });
+      var dKeys = Object.keys(dMajors);
+      if (dKeys.length) {
+        html += '<h4 style="margin:22px 0 10px;font-size:14px;color:var(--ink-700)">科目D · 专业大类</h4>' +
+          '<div style="display:flex;gap:18px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px">' +
+          '<label class="fld" style="width:280px;margin:0"><span>一级目录（专业大类）</span>' +
+          '<select id="dMajor">' + dKeys.map(function (m) { return '<option value="' + esc(m) + '">' + esc(m) + '</option>'; }).join('') + '</select></label>' +
+          '<span id="dMajorInfo" style="font-size:12.5px;color:var(--ink-400)"></span>' +
+          '</div>' +
+          '<div id="dBanks"></div>';
+      }
       var others = banks.filter(function (b) { return ['A', 'B', 'C', 'D'].indexOf(b.subject) < 0; });
       if (others.length) {
         html += '<h4 style="margin:22px 0 10px;font-size:14px;color:var(--ink-700)">其他（后台补充上传）</h4>' +
@@ -574,8 +580,29 @@
         refresh();
       };
     });
-    $('#selAll').onclick = function () { banks.forEach(function (b) { sel[b.id] = 1; }); $$('#bankBox .pick').forEach(function (e) { e.classList.add('on'); }); refresh(); };
-    $('#selNone').onclick = function () { sel = {}; $$('#bankBox .pick').forEach(function (e) { e.classList.remove('on'); }); refresh(); };
+    function syncUI() {
+      $$('#bankBox .pick').forEach(function (e) { if (sel[e.getAttribute('data-id')]) e.classList.add('on'); else e.classList.remove('on'); });
+      if ($('#dBanks')) $$('#dBanks input[type=checkbox]').forEach(function (cb) { cb.checked = !!sel[cb.getAttribute('data-id')]; });
+    }
+    $('#selAll').onclick = function () { banks.forEach(function (b) { sel[b.id] = 1; }); syncUI(); refresh(); };
+    $('#selNone').onclick = function () { sel = {}; syncUI(); refresh(); };
+    function renderDBanks() {
+      var box = $('#dBanks'); if (!box) return;
+      var m = $('#dMajor') && $('#dMajor').value;
+      if (!m) { box.innerHTML = ''; return; }
+      var list = dMajors[m] || [];
+      box.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:10px">' + list.map(function (b) {
+        return '<label style="display:flex;align-items:center;gap:8px;padding:9px 12px;border:1px solid var(--line);border-radius:8px;cursor:pointer;background:#fff;font-size:13px">' +
+          '<input type="checkbox" data-id="' + esc(b.id) + '"' + (sel[b.id] ? ' checked' : '') + '>' +
+          '<span style="font-weight:600">' + esc(b.name) + '</span>' +
+          '<span style="color:var(--ink-400)">单选' + b.n1 + '·多选' + b.n2 + '·判断' + b.n3 + ' 共' + b.total + '题</span></label>';
+      }).join('') + '</div>';
+      var info = $('#dMajorInfo'); if (info) info.textContent = '该大类共 ' + list.length + ' 个题库，勾选后合并练习';
+      $$('#dBanks input[type=checkbox]').forEach(function (cb) {
+        cb.onchange = function () { var id = cb.getAttribute('data-id'); if (cb.checked) sel[id] = 1; else delete sel[id]; syncUI(); refresh(); };
+      });
+    }
+    if ($('#dMajor')) { $('#dMajor').onchange = renderDBanks; renderDBanks(); }
     loadNsStats(ns).then(function (st) {
       var pc = $('#progCard');
       if (pc) pc.innerHTML = progBarHTML(st) + '<div style="margin-top:10px;font-size:12.5px;color:var(--ink-400)">累计刷题＝已练过的去重题数；未刷题＝题库总量－累计刷题；错题＝当前错题本数量。点「消灭错题」可专练错题本直至清空。</div>';
