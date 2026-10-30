@@ -1487,6 +1487,7 @@
       '<div class="page-hd"><h2 style="font-size:17px">答卷解析</h2><div style="display:flex;gap:8px">' +
       (pass ? '<button class="btn outline sm" id="btnCert">生成合格证明</button>' : '') +
       '<button class="btn ghost sm" id="btnPrint">打印试卷存档</button>' +
+      '<button class="btn ghost sm" id="btnPrintBlank">打印空白卷（附答案）</button>' +
       '<button class="btn ghost sm" id="fltAll">全部</button><button class="btn ghost sm" id="fltBad">仅看错题</button>' +
       '<button class="btn sm" data-go="' + rec.ns + '">返回模块</button></div></div>' +
       '<div id="reviewBox"></div>';
@@ -1523,10 +1524,14 @@
     if (bc) bc.onclick = function () { showCert(rec); };
     var bp = $('#btnPrint');
     if (bp) bp.onclick = function () { printExam(rec); };
+    var bpb = $('#btnPrintBlank');
+    if (bpb) bpb.onclick = function () { printExam(rec, 'blank'); };
   }
 
   /* ============ 打印试卷存档 ============ */
-  function printExam(rec) {
+  // mode: 'archive'（默认，含考生作答与判分） | 'blank'（空白卷，末尾附参考答案）
+  function printExam(rec, mode) {
+    mode = mode || 'archive';
     var p = rec.paper || [], d = rec.detail || [];
     function ansHtml(it) {
       var di = d[it.no - 1] || {};
@@ -1538,29 +1543,47 @@
         return '<div class="' + cls + '"><span class="k">' + Lt + '</span><span>' + esc(o) + '</span></div>';
       }).join('') + '</div>';
     }
+    function blankOpts(it) {
+      return '<div class="pp-opts">' + it.o.map(function (o, k) {
+        return '<div class="pp-opt"><span class="k">' + OPTL[k] + '</span><span>' + esc(o) + '</span></div>';
+      }).join('') + '</div>';
+    }
     function sec(t, n) {
       var items = p.filter(function (it) { return it.t === t; });
       if (!items.length) return '';
       return '<h3 class="pp-sec">' + n + '（共 ' + items.length + ' 题，每题 ' + items[0].score + ' 分）</h3>' +
         items.map(function (it) {
           var di = d[it.no - 1] || {};
-          return '<div class="pp-q">' +
-            '<div class="pp-qt"><b>' + it.no + '.</b> ' + esc(it.q) + '</div>' +
-            ansHtml(it) +
+          var opts = mode === 'blank' ? blankOpts(it) : ansHtml(it);
+          var ansLine = mode === 'blank' ? '' :
             '<div class="pp-ans">正确答案：<b>' + esc(it.a) + '</b>　考生作答：<b>' + esc(di.sel || '未作答') + '</b>　本题得分：<b>' + (di.score != null ? di.score : 0) + '</b>' +
-            (it.e ? '　解析：' + esc(it.e) : '') + '</div></div>';
+            (it.e ? '　解析：' + esc(it.e) : '') + '</div>';
+          return '<div class="pp-q"><div class="pp-qt"><b>' + it.no + '.</b> ' + esc(it.q) + '</div>' + opts + ansLine + '</div>';
         }).join('');
     }
+    function appendix() {
+      return '<h3 class="pp-sec">参考答案</h3><div class="pp-key" style="display:flex;flex-wrap:wrap;gap:6px 22px;margin-top:4px">' + p.map(function (it) {
+        var txt = it.t === 3 ? (it.a === 'A' ? '对' : '错') : it.a;
+        return '<div class="pp-ak" style="font-size:14px"><b>' + it.no + '.</b> ' + esc(txt) + '</div>';
+      }).join('') + '</div>';
+    }
+    var hd = mode === 'blank'
+      ? '<h1>' + esc(rec.title) + '</h1>' +
+        '<div class="pp-sub">' + esc(L.Bank.cfg.company) + ' · 考试试卷（空白卷）</div>' +
+        '<div class="pp-meta">姓名：__________　工号：__________　部门：__________　日期：__________　类别：' + esc(rec.category || '—') + '</div>'
+      : '<h1>' + esc(rec.title) + '</h1>' +
+        '<div class="pp-sub">' + esc(L.Bank.cfg.company) + ' · 考试试卷存档</div>' +
+        '<div class="pp-meta">姓名：<b>' + esc(rec.who.name) + '</b>　工号：' + esc(rec.who.no || '—') + '　部门：' + esc(rec.who.dept || '—') +
+        '　日期：' + fmtDate(rec.ts) + '　类别：' + esc(rec.category || '—') +
+        '　得分：<b>' + rec.score + '</b>/' + rec.total + '（' + (rec.passScore != null ? '合格线 ' + rec.passScore : '各专项均须合格') + '）　结论：<b>' + (rec.pass ? '合格' : '不合格') + '</b></div>';
+    var body = sec(1, '一、单项选择题') + sec(2, '二、多项选择题') + sec(3, '三、判断题') +
+      (mode === 'blank' ? appendix() : '');
     var html =
       '<div class="no-print" style="display:flex;gap:10px;justify-content:flex-end;margin-bottom:16px">' +
       '<button class="btn ghost" id="backRes2">返回成绩单</button><button class="btn ghost" id="doPdf2">导出PDF</button><button class="btn" id="doPrint2">打印</button></div>' +
       '<div class="paper-print">' +
-      '<div class="pp-hd"><h1>' + esc(rec.title) + '</h1>' +
-      '<div class="pp-sub">' + esc(L.Bank.cfg.company) + ' · 考试试卷存档</div>' +
-      '<div class="pp-meta">姓名：<b>' + esc(rec.who.name) + '</b>　工号：' + esc(rec.who.no || '—') + '　部门：' + esc(rec.who.dept || '—') +
-      '　日期：' + fmtDate(rec.ts) + '　类别：' + esc(rec.category || '—') +
-      '　得分：<b>' + rec.score + '</b>/' + rec.total + '（' + (rec.passScore != null ? '合格线 ' + rec.passScore : '各专项均须合格') + '）　结论：<b>' + (rec.pass ? '合格' : '不合格') + '</b></div></div>' +
-      sec(1, '一、单项选择题') + sec(2, '二、多项选择题') + sec(3, '三、判断题') +
+      '<div class="pp-hd">' + hd + '</div>' +
+      body +
       '<div class="pp-foot">证明编号：' + esc(rec.id) + '　本试卷由内部培训考核系统自动生成，仅作公司内部培训考核存档使用。</div>' +
       '</div>';
     setHTML(html);
@@ -1569,7 +1592,7 @@
     $('#doPrint2').onclick = function () { window.print(); };
     $('#doPdf2').onclick = function () {
       var pp = document.querySelector('.paper-print');
-      ldwsExportPdf(pp, '试卷存档_' + (rec.who.name || '考生') + '_' + fmtDate(rec.ts) + '.pdf');
+      ldwsExportPdf(pp, (mode === 'blank' ? '空白卷_' : '试卷存档_') + (rec.who.name || '考生') + '_' + fmtDate(rec.ts) + '.pdf');
     };
     $('#backRes2').onclick = function () { showResult(rec); };
   }
