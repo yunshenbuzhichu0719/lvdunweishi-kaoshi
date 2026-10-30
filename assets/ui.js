@@ -165,6 +165,51 @@
       };
     });
   }
+  /* 考试模式统计：只统计考试记录，与刷题数据隔离 */
+  function loadExamStats() {
+    return Promise.all([
+      L.Store.get('records').then(function (v) { return v || []; }),
+      loadSet('wrongExam:keypost'),
+      loadSet('wrong:keypost'),
+      Promise.resolve(L.Bank.list('keypost'))
+    ]).then(function (r) {
+      var recs = r[0], wrongExam = r[1], wrong = r[2], banks = r[3];
+      var total = 0; banks.forEach(function (b) { total += (b.total || 0); });
+      var seen = {}, examined = 0, alive = 0, k;
+      recs.forEach(function (rec) {
+        if (rec.ns !== 'keypost') return;
+        (rec.detail || []).forEach(function (d) { if (d && d.qid) seen[d.qid] = 1; });
+      });
+      for (k in seen) examined++;
+      for (k in wrongExam) if (wrongExam[k] && wrong[k]) alive++;
+      return { total: total, examined: examined, unexamined: Math.max(0, total - examined), wrong: alive };
+    });
+  }
+  var _kpStats = null;
+  function examProgHTML(st) {
+    function cell(n, label, color) {
+      return '<div class="prog-cell"><div class="pn" style="color:' + color + '">' + n + '</div><div class="pl">' + label + '</div></div>';
+    }
+    return '<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:4px">' +
+      '<div style="font-size:13.5px;font-weight:600">考试进度</div>' +
+      '<button class="btn sm" id="killExamWrong" style="margin-left:auto">消灭错题</button></div>' +
+      '<div class="prog-bar">' +
+      cell(st.examined, '已考题', 'var(--green-700)') +
+      cell(st.unexamined, '未考题', 'var(--ink-500)') +
+      cell(st.wrong, '错题', 'var(--red)') +
+      '</div>' +
+      '<div style="margin-top:10px;font-size:12.5px;color:var(--ink-400)">已考＝历次考试出现过的去重题数；未考＝题库总量－已考；错题＝考试答错且尚未消灭的题数。点「消灭错题」进入错题重练，答对即自动消灭。</div>';
+  }
+  function renderExamProgCard(st) {
+    _kpStats = st;
+    var pc = $('#progCard'); if (!pc) return;
+    pc.innerHTML = examProgHTML(st);
+    var btn = $('#killExamWrong');
+    if (btn) btn.onclick = function () {
+      startPractice('keypost', L.Bank.list('keypost').map(function (b) { return b.id; }), { order: 'rand', ftype: 0, scope: 'wrong', limit: '', shuffleOpt: true });
+    };
+  }
+
   function progBarHTML(st) {
     function cell(n, label, color) {
       return '<div class="prog-cell"><div class="pn" style="color:' + color + '">' + n + '</div><div class="pl">' + label + '</div></div>';
@@ -824,7 +869,6 @@
     var dBanks = banks.filter(function (b) { return b.subject === 'D'; });
     var majors = {};
     dBanks.forEach(function (b) { (majors[b.major || '其他'] = majors[b.major || '其他'] || []).push(b); });
-    var _kpStats = null;
 
     var state = { type: 'first', main: 'top', vice: '', post: 'top', major: Object.keys(majors)[0] || '', cat: '' };
     if (state.major && majors[state.major]) state.cat = majors[state.major][0].id;
@@ -942,13 +986,10 @@
       prepareKPExam(state, {
         name: name, no: ($('#exNo').value || '').trim(), dept: ($('#exDept').value || '').trim()
       });
-      var pcv = $('#progCard'); if (pcv && _kpStats) pcv.innerHTML = progBarHTML(_kpStats);
+      var pcv = $('#progCard'); if (pcv && _kpStats) renderExamProgCard(_kpStats);
     };
     }
-    loadNsStats('keypost').then(function (st) {
-      _kpStats = st;
-      var pcv2 = $('#progCard'); if (pcv2) pcv2.innerHTML = progBarHTML(st);
-    });
+    loadExamStats().then(renderExamProgCard);
     render();
   };
 
@@ -1373,6 +1414,19 @@
       paper: E.paper.items.map(function (it) { return { no: it.no, sub: it.sub, t: it.t, q: it.q, o: it.o, a: it.a, e: it.e, score: it.score }; }),
       detail: r.detail
     };
+    // 考试错题归档：并入考试错题集合与错题本（之后答对即自动消灭）
+    (function () {
+      var bad = r.detail.filter(function (d) { return d && d.qid && !d.ok; });
+      if (!bad.length) return;
+      loadSet('wrongExam:' + E.ns).then(function (s) {
+        bad.forEach(function (d) { s[d.qid] = 1; });
+        L.Store.set('wrongExam:' + E.ns, s);
+      });
+      loadSet('wrong:' + E.ns).then(function (s) {
+        bad.forEach(function (d) { s[d.qid] = 1; });
+        L.Store.set('wrong:' + E.ns, s);
+      });
+    })();
     saveRecord(rec).then(function () {
       if (auto) {
         modal({
