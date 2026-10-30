@@ -553,8 +553,9 @@
       '<label class="fld" style="width:170px;margin:0"><span>练习顺序</span><select id="order"><option value="seq">顺序练习</option><option value="rand">随机练习</option></select></label>' +
       '<label class="fld" style="width:170px;margin:0"><span>题型范围</span><select id="ftype"><option value="0">全部题型</option><option value="1">仅单选题</option><option value="2">仅多选题</option><option value="3">仅判断题</option></select></label>' +
       '<label class="fld" style="width:190px;margin:0"><span>练习范围</span><select id="scope"><option value="all">全部题目</option><option value="wrong">仅错题本</option><option value="fav">仅收藏题</option></select></label>' +
-      '<label class="fld" style="width:140px;margin:0"><span>练习数量</span><select id="qnum"><option value="10">10题</option><option value="20">20题</option><option value="30">30题</option><option value="40" selected>40题</option></select></label>' +
+      '<label class="fld" style="width:140px;margin:0"><span>练习数量</span><select id="qnum"><option value="10">10题</option><option value="20">20题</option><option value="30">30题</option><option value="40" selected>40题</option><option value="50">50题</option><option value="all">全部</option></select></label>' +
       '<label style="display:flex;align-items:center;gap:7px;font-size:13.5px;margin-bottom:2px"><input type="checkbox" id="shufOpt" style="width:auto"> 选项乱序</label>' +
+      '<label style="display:flex;align-items:center;gap:7px;font-size:13.5px;margin-bottom:2px"><input type="checkbox" id="priNew" style="width:auto" checked> 优先刷未做过的题</label>' +
       '<div style="flex:1"></div>' +
       '<button class="btn lg" id="startPractice">开始练习</button>' +
       '</div><div id="pickInfo" style="margin-top:12px;font-size:13px;color:var(--ink-400)">未选择题库</div></div>'
@@ -587,7 +588,8 @@
       if (!ids.length) return toast('请至少选择一个题库', 'err');
       startPractice(ns, ids, {
         order: $('#order').value, ftype: +$('#ftype').value,
-        scope: $('#scope').value, limit: $('#qnum').value, shuffleOpt: $('#shufOpt').checked
+        scope: $('#scope').value, limit: $('#qnum').value, shuffleOpt: $('#shufOpt').checked,
+        priNew: $('#priNew').checked
       });
     };
   }
@@ -609,6 +611,11 @@
       if (opt.scope === 'wrong') qs = qs.filter(function (q) { return wrong[q.id]; });
       if (opt.scope === 'fav') qs = qs.filter(function (q) { return fav[q.id]; });
       if (!qs.length) return toast(opt.scope === 'wrong' ? '错题本为空' : (opt.scope === 'fav' ? '暂无收藏题目' : '没有符合条件的题目'), 'err');
+      // 优先把“未刷过的题”排到前面：先取未做，再做过的补足，确保每轮先刷没刷的
+      if (opt.priNew) {
+        var _un = qs.filter(function (q) { return !prac[q.id]; });
+        if (_un.length) qs = _un.concat(qs.filter(function (q) { return prac[q.id]; }));
+      }
       if (opt.order === 'rand') L.Engine.shuffle(qs);
       if (opt.shuffleOpt) qs = qs.map(L.Engine.shuffleOptions);
       if (opt.limit) {
@@ -618,7 +625,7 @@
 
       P = {
         ns: ns, ids: bankIds, key: 'prog:' + ns + ':' + L.hash(bankIds.slice().sort().join(',')),
-        qs: qs, i: (opt.order === 'seq' && opt.scope === 'all' && prog && prog.i < qs.length) ? prog.i : 0,
+        qs: qs, i: (opt.order === 'seq' && opt.scope === 'all' && !opt.priNew && prog && prog.i < qs.length) ? prog.i : 0,
         ans: {}, judged: {}, wrong: wrong, fav: fav, prac: prac, opt: opt,
         stat: { right: 0, wrong: 0 }
       };
