@@ -103,125 +103,9 @@
   //   安全专项 -> D3（安全专项题库）
   //   通用基础 -> D2（通用基础题库·全体员工必修）
   //   岗位专项 -> 对应岗位题库（D4 设备员 / D5 质量管理员 / D6 内审员 / D7 监督员 / D8 采样员 / D9 样品员 / D10 实验室检测员 / D11 报告编制员 / D12 报告审核员）
-  var DAILY_POSITION_PLANS = [
-    {
-      name: '采样员理论考核',
-      kind: 'position',
-      position: '采样员',
-      minutes: 120,
-      scoreMap: { 1: 1, 2: 1, 3: 1 },
-      pass: 'all',
-      subs: [
-        { name: '安全专项', passMode: 'percent', pass: 100, n: { 1: 15, 2: 8, 3: 7 }, banks: ['D3'], ranges: { 1: [51, 80], 2: [136, 148], 3: [189, 208] } },
-        { name: '通用基础', passMode: 'score', pass: 80, n: { 1: 20, 2: 10, 3: 10 }, banks: ['D2'], ranges: { 1: [1, 50], 2: [111, 135], 3: [164, 188] } },
-        { name: '岗位专项', passMode: 'score', pass: 80, n: { 1: 30, 2: 20, 3: 15 }, banks: ['D8'] }
-      ]
-    },
-    {
-      name: '实验室检测员理论考核',
-      kind: 'position',
-      position: '实验室检测员',
-      minutes: 120,
-      scoreMap: { 1: 1, 2: 1, 3: 1 },
-      pass: 'all',
-      subs: [
-        { name: '安全专项', passMode: 'percent', pass: 100, n: { 1: 15, 2: 8, 3: 7 }, banks: ['D3'], ranges: { 1: [51, 80], 2: [136, 148], 3: [189, 208] } },
-        { name: '通用基础', passMode: 'score', pass: 80, n: { 1: 20, 2: 10, 3: 10 }, banks: ['D2'], ranges: { 1: [1, 50], 2: [111, 135], 3: [164, 188] } },
-        { name: '岗位专项', passMode: 'score', pass: 80, n: { 1: 30, 2: 20, 3: 15 }, banks: ['D10'] }
-      ]
-    },
-    {
-      name: '报告编制员理论考核',
-      kind: 'position',
-      position: '报告编制员',
-      minutes: 100,
-      scoreMap: { 1: 1, 2: 1, 3: 1 },
-      pass: 'all',
-      subs: [
-        { name: '安全专项', passMode: 'percent', pass: 100, n: { 1: 15, 2: 8, 3: 7 }, banks: ['D3'], ranges: { 1: [51, 80], 2: [136, 148], 3: [189, 208] } },
-        { name: '通用基础', passMode: 'score', pass: 80, n: { 1: 20, 2: 10, 3: 10 }, banks: ['D2'], ranges: { 1: [1, 50], 2: [111, 135], 3: [164, 188] } },
-        { name: '岗位专项', passMode: 'score', pass: 85, n: { 1: 30, 2: 20, 3: 15 }, banks: ['D11'] }
-      ]
-    },
-    {
-      name: '报告审核员理论考核',
-      kind: 'position',
-      position: '报告审核员',
-      minutes: 100,
-      scoreMap: { 1: 1, 2: 1, 3: 1 },
-      pass: 'all',
-      subs: [
-        { name: '安全专项', passMode: 'percent', pass: 100, n: { 1: 15, 2: 8, 3: 7 }, banks: ['D3'], ranges: { 1: [51, 80], 2: [136, 148], 3: [189, 208] } },
-        { name: '通用基础', passMode: 'score', pass: 80, n: { 1: 20, 2: 10, 3: 10 }, banks: ['D2'], ranges: { 1: [1, 50], 2: [111, 135], 3: [164, 188] } },
-        { name: '岗位专项', passMode: 'score', pass: 85, n: { 1: 30, 2: 20, 3: 15 }, banks: ['D12'] }
-      ]
-    },
-    {
-      name: '样品员理论考核',
-      kind: 'position',
-      position: '样品员',
-      minutes: 80,
-      scoreMap: { 1: 1, 2: 1, 3: 1 },
-      pass: 'all',
-      subs: [
-        { name: '安全专项', passMode: 'percent', pass: 100, n: { 1: 15, 2: 8, 3: 7 }, banks: ['D3'], ranges: { 1: [51, 80], 2: [136, 148], 3: [189, 208] } },
-        { name: '通用基础', passMode: 'score', pass: 80, n: { 1: 20, 2: 10, 3: 10 }, banks: ['D2'], ranges: { 1: [1, 50], 2: [111, 135], 3: [164, 188] } },
-        { name: '岗位专项', passMode: 'score', pass: 80, n: { 1: 30, 2: 20, 3: 15 }, banks: ['D9'] }
-      ]
-    },
-    {
-      name: '设备员理论考核',
-      kind: 'position',
-      position: '设备员',
-      minutes: 80,
-      scoreMap: { 1: 1, 2: 1, 3: 1 },
-      pass: 'all',
-      subs: [
-        { name: '安全专项', passMode: 'percent', pass: 100, n: { 1: 15, 2: 8, 3: 7 }, banks: ['D3'], ranges: { 1: [51, 80], 2: [136, 148], 3: [189, 208] } },
-        { name: '通用基础', passMode: 'score', pass: 80, n: { 1: 20, 2: 10, 3: 10 }, banks: ['D2'], ranges: { 1: [1, 50], 2: [111, 135], 3: [164, 188] } },
-        { name: '岗位专项', passMode: 'score', pass: 80, n: { 1: 30, 2: 20, 3: 15 }, banks: ['D4'] }
-      ]
-    },
-    {
-      name: '质量管理员理论考核',
-      kind: 'position',
-      position: '质量管理员',
-      minutes: 80,
-      scoreMap: { 1: 1, 2: 1, 3: 1 },
-      pass: 'all',
-      subs: [
-        { name: '安全专项', passMode: 'percent', pass: 100, n: { 1: 15, 2: 8, 3: 7 }, banks: ['D3'], ranges: { 1: [51, 80], 2: [136, 148], 3: [189, 208] } },
-        { name: '通用基础', passMode: 'score', pass: 80, n: { 1: 20, 2: 10, 3: 10 }, banks: ['D2'], ranges: { 1: [1, 50], 2: [111, 135], 3: [164, 188] } },
-        { name: '岗位专项', passMode: 'score', pass: 80, n: { 1: 30, 2: 20, 3: 15 }, banks: ['D5'] }
-      ]
-    },
-    {
-      name: '内审员理论考核',
-      kind: 'position',
-      position: '内审员',
-      minutes: 80,
-      scoreMap: { 1: 1, 2: 1, 3: 1 },
-      pass: 'all',
-      subs: [
-        { name: '安全专项', passMode: 'percent', pass: 100, n: { 1: 15, 2: 8, 3: 7 }, banks: ['D3'], ranges: { 1: [51, 80], 2: [136, 148], 3: [189, 208] } },
-        { name: '通用基础', passMode: 'score', pass: 80, n: { 1: 20, 2: 10, 3: 10 }, banks: ['D2'], ranges: { 1: [1, 50], 2: [111, 135], 3: [164, 188] } },
-        { name: '岗位专项', passMode: 'score', pass: 80, n: { 1: 30, 2: 20, 3: 15 }, banks: ['D6'] }
-      ]
-    },
-    {
-      name: '监督员理论考核',
-      kind: 'position',
-      position: '监督员',
-      minutes: 80,
-      scoreMap: { 1: 1, 2: 1, 3: 1 },
-      pass: 'all',
-      subs: [
-        { name: '安全专项', passMode: 'percent', pass: 100, n: { 1: 15, 2: 8, 3: 7 }, banks: ['D3'], ranges: { 1: [51, 80], 2: [136, 148], 3: [189, 208] } },
-        { name: '通用基础', passMode: 'score', pass: 80, n: { 1: 20, 2: 10, 3: 10 }, banks: ['D2'], ranges: { 1: [1, 50], 2: [111, 135], 3: [164, 188] } },
-        { name: '岗位专项', passMode: 'score', pass: 80, n: { 1: 30, 2: 20, 3: 15 }, banks: ['D7'] }
-      ]
-    }
-  ];
+  // 2026-11-11：应用户要求清空日常培训考试方案（原内置岗位方案已移除，后台可自行新建）。
+  // 如需恢复旧版内置方案，请从 git 历史找回本段定义（搜 DAILY_POSITION_PLANS）。
+  var DAILY_POSITION_PLANS = [];
 
   /* ================= 默认配置 ================= */
   var DEFAULT_CFG = {
@@ -276,11 +160,10 @@
         }
         // 迁移：将内置岗位方案更新为最新版本（补充 banks 映射，使考试模式使用分岗位题库 D2-D12）。
         // 内置岗位方案不可在后台编辑，直接覆盖；用户自建的自定义方案保持不变。
-        if ((Bank.cfg.daily._plansV || 0) < 3) {
-          Bank.cfg.daily.plans = (Bank.cfg.daily.plans || []).filter(function (p) {
-            return p.kind !== 'position';
-          }).concat(JSON.parse(JSON.stringify(DAILY_POSITION_PLANS)));
-          Bank.cfg.daily._plansV = 3;
+        // 2026-11-11 迁移：清空全部日常考试方案（含各设备本地已保存的旧方案）
+        if ((Bank.cfg.daily._plansV || 0) < 4) {
+          Bank.cfg.daily.plans = [];
+          Bank.cfg.daily._plansV = 4;
           return Bank.saveCfg().then(function () { return Bank.cfg; });
         }
         return Bank.cfg;
