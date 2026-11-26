@@ -347,11 +347,26 @@ table.tbl tr:hover td{background:#fafcfb}
 .pr-sub{text-align:center;color:#555;font-size:13px;margin-bottom:16px}
 .muted{color:#666;font-size:11.5px}
 
+@page{size:A4;margin:12mm 14mm}
 @media print{
   .paper-print,.print-records{max-width:none}
   .pp-q{break-inside:avoid}
   .tbl{width:100%;border-collapse:collapse}
   .tbl th,.tbl td{border:1px solid #ccc;padding:6px 8px}
+  /* 40题卷紧凑排版：目标两页内完成 */
+  .paper-print{font-size:12px;line-height:1.32}
+  .pp-hd{padding-bottom:8px;margin-bottom:10px}
+  .pp-hd h1{font-size:19px;margin:0 0 3px;letter-spacing:1px}
+  .pp-sub{font-size:11px;letter-spacing:0}
+  .pp-meta{margin-top:6px;font-size:10.5px;line-height:1.4}
+  .pp-sec{font-size:13px;margin:10px 0 6px;padding-left:8px;border-left-width:3px}
+  .pp-q{margin-bottom:5px}
+  .pp-qt{font-size:12px;margin-bottom:1px}
+  .pp-opts{gap:1px 14px;margin:0}
+  .pp-opt{font-size:11.5px;line-height:1.25;gap:4px}
+  .pp-opt .k{min-width:14px}
+  .pp-ans{font-size:10.5px;margin-top:1px;line-height:1.25}
+  .pp-foot{margin-top:10px;padding-top:6px;font-size:10px}
 }
 
 @media(max-width:920px){
