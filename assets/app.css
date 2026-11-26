@@ -332,6 +332,7 @@ table.tbl tr:hover td{background:#fafcfb}
 .pp-sec{font-size:16px;margin:22px 0 10px;border-left:4px solid var(--green-700, #0e7a4f);padding-left:10px}
 .pp-q{margin-bottom:16px;break-inside:avoid}
 .pp-qt{font-size:14.5px;margin-bottom:6px}
+.pp-mark{font-weight:400;white-space:nowrap}
 .pp-opts{display:flex;flex-wrap:wrap;gap:8px 26px;margin:6px 0}
 .pp-opt{display:flex;align-items:baseline;gap:6px;font-size:13.5px}
 .pp-opt .k{display:inline-block;min-width:18px;font-weight:700}

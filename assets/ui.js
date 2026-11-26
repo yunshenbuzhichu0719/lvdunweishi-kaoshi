@@ -1596,7 +1596,23 @@
   function printExam(rec, mode) {
     mode = mode || 'archive';
     var p = rec.paper || [], d = rec.detail || [];
+    // 判断题统一用 √ / ×，不再显示 A 对 / B 错选项，节省版面
+    function judgeMark(v) {
+      v = v == null ? '' : String(v);
+      if (v === 'A' || v === '对' || v === '√' || v === '正确') return '√';
+      if (v === 'B' || v === '错' || v === '×' || v === '错误') return '×';
+      return v;
+    }
+    function stemMark(it) {
+      var di = d[it.no - 1] || {};
+      if (it.t === 3) {
+        if (mode === 'blank') return '（　）';
+        return '（' + (di.sel ? judgeMark(di.sel) : '') + '）';
+      }
+      return mode === 'blank' ? '（　）' : '（' + esc(di.sel || '') + '）';
+    }
     function ansHtml(it) {
+      if (it.t === 3) return '';
       var di = d[it.no - 1] || {};
       var sel = di.sel || '';
       return '<div class="pp-opts">' + it.o.map(function (o, k) {
@@ -1607,6 +1623,7 @@
       }).join('') + '</div>';
     }
     function blankOpts(it) {
+      if (it.t === 3) return '';
       return '<div class="pp-opts">' + it.o.map(function (o, k) {
         return '<div class="pp-opt"><span class="k">' + OPTL[k] + '</span><span>' + esc(o) + '</span></div>';
       }).join('') + '</div>';
@@ -1618,15 +1635,21 @@
         items.map(function (it) {
           var di = d[it.no - 1] || {};
           var opts = mode === 'blank' ? blankOpts(it) : ansHtml(it);
-          var ansLine = mode === 'blank' ? '' :
-            '<div class="pp-ans">正确答案：<b>' + esc(it.a) + '</b>　考生作答：<b>' + esc(di.sel || '未作答') + '</b>　本题得分：<b>' + (di.score != null ? di.score : 0) + '</b>' +
-            (it.e ? '　解析：' + esc(it.e) : '') + '</div>';
-          return '<div class="pp-q"><div class="pp-qt"><b>' + it.no + '.</b> ' + esc(it.q) + '</div>' + opts + ansLine + '</div>';
+          var ansLine;
+          if (mode === 'blank') ansLine = '';
+          else if (it.t === 3) {
+            ansLine = '<div class="pp-ans">正确答案：<b>' + judgeMark(it.a) + '</b>　考生作答：<b>' + (di.sel ? judgeMark(di.sel) : '未作答') + '</b>　本题得分：<b>' + (di.score != null ? di.score : 0) + '</b>' +
+              (it.e ? '　解析：' + esc(it.e) : '') + '</div>';
+          } else {
+            ansLine = '<div class="pp-ans">正确答案：<b>' + esc(it.a) + '</b>　考生作答：<b>' + esc(di.sel || '未作答') + '</b>　本题得分：<b>' + (di.score != null ? di.score : 0) + '</b>' +
+              (it.e ? '　解析：' + esc(it.e) : '') + '</div>';
+          }
+          return '<div class="pp-q"><div class="pp-qt"><b>' + it.no + '.</b> ' + esc(it.q) + '　<span class="pp-mark">' + stemMark(it) + '</span></div>' + opts + ansLine + '</div>';
         }).join('');
     }
     function appendix() {
       return '<h3 class="pp-sec">参考答案</h3><div class="pp-key" style="display:flex;flex-wrap:wrap;gap:6px 22px;margin-top:4px">' + p.map(function (it) {
-        var txt = it.t === 3 ? (it.a === 'A' ? '对' : '错') : it.a;
+        var txt = it.t === 3 ? judgeMark(it.a) : it.a;
         return '<div class="pp-ak" style="font-size:14px"><b>' + it.no + '.</b> ' + esc(txt) + '</div>';
       }).join('') + '</div>';
     }
