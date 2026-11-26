@@ -1,5 +1,5 @@
 /* 绿盾卫士培训考核系统 Service Worker —— 网络优先 + 离线回退，保证内容更新及时生效 */
-const CACHE = 'lvdun-pwa-v5';
+const CACHE = 'lvdun-pwa-v6';
 const PRECACHE = [
   './', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png',
   './assets/app.css', './assets/store.js', './assets/auth.js', './assets/engine.js',

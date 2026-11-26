@@ -152,7 +152,7 @@
           got = got.concat(sel);
         });
         if (got.length) sections.push({ subject: sub.name, name: sub.name, count: got.length, meta: sub });
-        got.forEach(function (q) { all.push({ sub: sub.name, q: q }); });
+        got.forEach(function (q) { all.push({ sub: sub.name, q: q, meta: sub }); });
       });
 
       // 按专项顺序、专项内按 单选→多选→判断 排列
@@ -168,9 +168,11 @@
       var smPos = plan.scoreMap || scoreMap || { 1: 1, 2: 1, 3: 1 };
       var itemsPos = orderedPos.map(function (x, i) {
         var q = spec.shuffleOptions ? shuffleOptions(x.q) : x.q;
+        // 每个专项可自带 scoreMap（K1/K2 为 2/4/2，K3/K4 为 1/2/2）
+        var smSub = (x.meta && x.meta.scoreMap) || smPos;
         return {
           no: i + 1, qid: q.id, sub: x.sub, t: q.t, q: q.q, o: q.o, a: q.a,
-          k: q.k || '', e: q.e || '', score: smPos[q.t] || 1, bank: x.q.c || ''
+          k: q.k || '', e: q.e || '', score: smSub[q.t] || 1, bank: x.q.c || ''
         };
       });
       var totalPos = itemsPos.reduce(function (s, x) { return s + x.score; }, 0);
@@ -295,7 +297,8 @@
         if (sub.n && sub.n[1]) seg.push('单选' + sub.n[1]);
         if (sub.n && sub.n[2]) seg.push('多选' + sub.n[2]);
         if (sub.n && sub.n[3]) seg.push('判断' + sub.n[3]);
-        var req = sub.passMode === 'percent' ? '须 100% 正确' : '≥' + (sub.pass || 80) + '%';
+        if (sub.scoreMap) seg.push('计分' + sub.scoreMap[1] + '/' + sub.scoreMap[2] + '/' + sub.scoreMap[3]);
+        var req = sub.passMode === 'percent' ? '须 100% 正确' : '≥' + (sub.pass || 80) + '分';
         return sub.name + '（' + seg.join('、') + '，' + req + '）';
       }).join(' / ');
     }

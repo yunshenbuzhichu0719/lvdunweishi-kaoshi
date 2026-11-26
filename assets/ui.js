@@ -1060,11 +1060,20 @@
     var _dailyStats = null;
 
     function subMinutes(sub) {
+      if (sub.minutes) return sub.minutes;
       var n = (sub.n[1] || 0) + (sub.n[2] || 0) + (sub.n[3] || 0);
       return Math.max(20, Math.round(n * 1.2));
     }
+    function subScoreMap(sub) {
+      return sub.scoreMap || { 1: 1, 2: 1, 3: 1 };
+    }
+    function subFull(sub) {
+      var sm = subScoreMap(sub);
+      return (sub.n[1] || 0) * sm[1] + (sub.n[2] || 0) * sm[2] + (sub.n[3] || 0) * sm[3];
+    }
     function subReqText(sub) {
-      return sub.passMode === 'percent' ? '须 100% 正确' : '≥' + (sub.pass || 80) + '%';
+      if (sub.passMode === 'percent') return '须 100% 正确';
+      return '≥' + (sub.pass || 80) + ' 分（满分 ' + subFull(sub) + '）';
     }
     function dispName(p) { return (p.name || '').replace('理论考核', ''); }
 
@@ -1076,7 +1085,7 @@
         return '<div class="pick sub-exam" data-sub="' + i + '">' +
           '<div class="nm"><span>' + esc(sub.name) + (i === 0 ? ' <span class="chip" style="background:#fdeceb;color:#c0392b;border-color:#f5c6c6">必过</span>' : '') + '</span>' +
           '<span class="enter">点击进入本专项考试 →</span></div>' +
-          '<div class="ds">单选 ' + (sub.n[1] || 0) + ' · 多选 ' + (sub.n[2] || 0) + ' · 判断 ' + (sub.n[3] || 0) + '（共 ' + n + ' 题）</div>' +
+          '<div class="ds">单选 ' + (sub.n[1] || 0) + ' · 多选 ' + (sub.n[2] || 0) + ' · 判断 ' + (sub.n[3] || 0) + '（共 ' + n + ' 题 · 满分 ' + subFull(sub) + ' 分）</div>' +
           '<div class="qs">时长 ' + subMinutes(sub) + ' 分钟 · 合格：' + subReqText(sub) + '</div>' +
           '</div>';
       }).join('') : '';
@@ -1090,12 +1099,12 @@
 
       setHTML(
         crumb([{ t: '首页', go: 'home' }, { t: '日常培训考核', go: 'daily' }, { t: '考试模式' }]) +
-        '<div class="page-hd"><div><h2>日常培训考核 · 考试</h2><div class="sub">选择报考岗位与专项，系统随机组卷；三个专项单独考试、单独计时、单独判定合格</div></div></div>' +
+        '<div class="page-hd"><div><h2>日常培训考核 · 考试</h2><div class="sub">选择报考岗位与模块，系统随机组卷；K1~K4 四个模块单独考试、单独计时、单独判定合格</div></div></div>' +
         '<div class="card pad" id="progCard" style="margin-bottom:16px"></div>' +
 
         // 一、考试类型（原 三、选择专项考试）
         (posPlans.length ?
-          '<div class="card pad" style="margin-bottom:16px"><div style="font-size:13.5px;font-weight:600;margin-bottom:12px">一、考试类型（各专项独立组卷、独立计时、单独判定合格）</div>' +
+          '<div class="card pad" style="margin-bottom:16px"><div style="font-size:13.5px;font-weight:600;margin-bottom:12px">一、考试模块（各模块独立组卷、独立计时、单独判定合格）</div>' +
           '<div class="grid g3">' + subCards + '</div></div>' : '') +
 
         // 二、选择报考岗位（去除专项明细大框）
@@ -1215,7 +1224,7 @@
         return s.name + (s.passMode === 'percent' ? ' 须 100% 正确' : ' ≥' + (s.pass || 80) + '%');
       }).join('；');
     }
-    return '各专项均须合格';
+    return '各模块均须合格';
   }
   var E = null;
   function startExam(ns, paper, who, cfg) {
@@ -1629,7 +1638,7 @@
         '<div class="pp-sub">' + esc(L.Bank.cfg.company) + ' · 考试试卷存档</div>' +
         '<div class="pp-meta">姓名：<b>' + esc(rec.who.name) + '</b>　工号：' + esc(rec.who.no || '—') + '　部门：' + esc(rec.who.dept || '—') +
         '　日期：' + fmtDate(rec.ts) + '　类别：' + esc(rec.category || '—') +
-        '　得分：<b>' + rec.score + '</b>/' + rec.total + '（' + (rec.passScore != null ? '合格线 ' + rec.passScore : '各专项均须合格') + '）　结论：<b>' + (rec.pass ? '合格' : '不合格') + '</b></div>';
+        '　得分：<b>' + rec.score + '</b>/' + rec.total + '（' + (rec.passScore != null ? '合格线 ' + rec.passScore : '各模块均须合格') + '）　结论：<b>' + (rec.pass ? '合格' : '不合格') + '</b></div>';
     var body = sec(1, '一、单项选择题') + sec(2, '二、多项选择题') + sec(3, '三、判断题') +
       (mode === 'blank' ? appendix() : '');
     var html =
@@ -1664,7 +1673,7 @@
       (rec.who.no ? '（证件/工号：' + esc(rec.who.no) + '）' : '') +
       '于 ' + d.getFullYear() + ' 年 ' + (d.getMonth() + 1) + ' 月 ' + d.getDate() + ' 日参加本公司组织的' +
       '<b>' + esc(rec.title) + '</b>' + (rec.category ? '（科目D 专业类别：' + esc(rec.category) + '）' : '') +
-      '，考试成绩 <b style="color:#0e7a4f;font-size:18px">' + rec.score + '</b> 分（满分 ' + rec.total + ' 分，' + (rec.passScore != null ? '合格线 ' + rec.passScore + ' 分' : '各专项均须合格') + '），' +
+      '，考试成绩 <b style="color:#0e7a4f;font-size:18px">' + rec.score + '</b> 分（满分 ' + rec.total + ' 分，' + (rec.passScore != null ? '合格线 ' + rec.passScore + ' 分' : '各模块均须合格') + '），' +
       '结论为 <b>合格</b>。' +
       '</div>' +
       '<div class="sign"><div>' + esc(cfg.company) + '</div><div>' + d.getFullYear() + ' 年 ' + (d.getMonth() + 1) + ' 月 ' + d.getDate() + ' 日</div></div>' +

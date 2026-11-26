@@ -98,14 +98,42 @@
     else { _mode = 'mem'; }
   }
 
-  /* ================= 日常培训岗位考试方案（按题库抽题，banks 映射到分岗位题库 D2-D12） ================= */
-  // 各专项抽题来源：
-  //   安全专项 -> D3（安全专项题库）
-  //   通用基础 -> D2（通用基础题库·全体员工必修）
-  //   岗位专项 -> 对应岗位题库（D4 设备员 / D5 质量管理员 / D6 内审员 / D7 监督员 / D8 采样员 / D9 样品员 / D10 实验室检测员 / D11 报告编制员 / D12 报告审核员）
-  // 2026-11-11：应用户要求清空日常培训考试方案（原内置岗位方案已移除，后台可自行新建）。
-  // 如需恢复旧版内置方案，请从 git 历史找回本段定义（搜 DAILY_POSITION_PLANS）。
-  var DAILY_POSITION_PLANS = [];
+  /* ================= 日常培训岗位考试方案（四模块框架：K1/K2/K3/K4） ================= */
+  // 2026-11-26 定稿：10 个一般岗位 × 4 个理论模块；每个模块单独组卷、单独计时、单独判定。
+  // K1/K2：20×2 + 10×4 + 10×2 = 100 分，合格 ≥80；
+  // K3/K4：30×1 + 20×2 + 15×2 = 100 分，合格 ≥70。
+  // 题库来源：日常培训题库中按岗位拆分的 40 个分类（D::岗位::K1~K4）。
+  var DAILY_MODULES = [
+    { code: 'K1', name: '法律法规与职业操守', n: { 1: 20, 2: 10, 3: 10 }, scoreMap: { 1: 2, 2: 4, 3: 2 }, pass: 80 },
+    { code: 'K2', name: '安全与职业防护', n: { 1: 20, 2: 10, 3: 10 }, scoreMap: { 1: 2, 2: 4, 3: 2 }, pass: 80 },
+    { code: 'K3', name: '管理体系与质量控制', n: { 1: 30, 2: 20, 3: 15 }, scoreMap: { 1: 1, 2: 2, 3: 2 }, pass: 70 },
+    { code: 'K4', name: '检验检测技术与记录数据追溯', n: { 1: 30, 2: 20, 3: 15 }, scoreMap: { 1: 1, 2: 2, 3: 2 }, pass: 70 }
+  ];
+  var DAILY_POSITIONS = [
+    '设备员', '质量管理员', '内审员', '监督员', '采样员',
+    '样品员', '检测员', '报告编制员', '报告审核员', '资料员'
+  ];
+  var DAILY_POSITION_PLANS = DAILY_POSITIONS.map(function (pos) {
+    return {
+      name: pos + '理论考核',
+      kind: 'position',
+      position: pos,
+      minutes: 240,
+      scoreMap: { 1: 1, 2: 1, 3: 1 },
+      pass: 'all',
+      subs: DAILY_MODULES.map(function (m) {
+        return {
+          name: m.code + '：' + m.name,
+          passMode: 'score',
+          pass: m.pass,
+          minutes: m.code === 'K1' || m.code === 'K2' ? 50 : 80,
+          n: { 1: m.n[1], 2: m.n[2], 3: m.n[3] },
+          scoreMap: { 1: m.scoreMap[1], 2: m.scoreMap[2], 3: m.scoreMap[3] },
+          banks: ['D::' + pos + '::' + m.code]
+        };
+      })
+    };
+  });
 
   /* ================= 默认配置 ================= */
   var DEFAULT_CFG = {
@@ -152,18 +180,12 @@
     loadCfg: function () {
       return Store.get('cfg').then(function (c) {
         Bank.cfg = deepMerge(JSON.parse(JSON.stringify(DEFAULT_CFG)), c || {});
-        // 若老用户尚未配置日常岗位方案，自动播种内置方案
-        if (!Bank.cfg.daily._seededV2 && (!Bank.cfg.daily.plans || !Bank.cfg.daily.plans.length)) {
+        // 2026-11-26 迁移：按四模块新框架重建 10 个岗位的日常考试方案。
+        // 覆盖各设备本地已保存的旧方案（含 11-11 清空后的空方案）；后续版本不再强制覆盖。
+        if ((Bank.cfg.daily._plansV || 0) < 5) {
           Bank.cfg.daily.plans = JSON.parse(JSON.stringify(DAILY_POSITION_PLANS));
+          Bank.cfg.daily._plansV = 5;
           Bank.cfg.daily._seededV2 = true;
-          return Bank.saveCfg().then(function () { return Bank.cfg; });
-        }
-        // 迁移：将内置岗位方案更新为最新版本（补充 banks 映射，使考试模式使用分岗位题库 D2-D12）。
-        // 内置岗位方案不可在后台编辑，直接覆盖；用户自建的自定义方案保持不变。
-        // 2026-11-11 迁移：清空全部日常考试方案（含各设备本地已保存的旧方案）
-        if ((Bank.cfg.daily._plansV || 0) < 4) {
-          Bank.cfg.daily.plans = [];
-          Bank.cfg.daily._plansV = 4;
           return Bank.saveCfg().then(function () { return Bank.cfg; });
         }
         return Bank.cfg;

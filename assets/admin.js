@@ -228,9 +228,19 @@
         '</tr></thead><tbody>' +
         ((cfg.plans || []).length ? cfg.plans.map(function (p, i) {
           var isPos = p.kind === 'position';
-          var full = isPos ? p.subs.reduce(function (s, sub) { return s + (sub.n[1] || 0) + (sub.n[2] || 0) + (sub.n[3] || 0); }, 0) : (p.n1 * p.s1 + p.n2 * p.s2 + p.n3 * p.s3);
+          function subFullOf(sub) {
+            var sm = sub.scoreMap || p.scoreMap || { 1: 1, 2: 1, 3: 1 };
+            return (sub.n[1] || 0) * sm[1] + (sub.n[2] || 0) * sm[2] + (sub.n[3] || 0) * sm[3];
+          }
+          var full;
+          if (isPos) {
+            var fs = p.subs.map(subFullOf);
+            full = fs.every(function (v) { return v === fs[0]; }) ? ('各' + fs[0]) : fs.join('/');
+          } else {
+            full = p.n1 * p.s1 + p.n2 * p.s2 + p.n3 * p.s3;
+          }
           var ratio = isPos ? L.Engine.planSummary(p) : ('单选 ' + p.n1 + '×' + p.s1 + '　多选 ' + p.n2 + '×' + p.s2 + '　判断 ' + p.n3 + '×' + p.s3);
-          var pass = isPos ? '各专项均须合格' : (p.pass + ' 分');
+          var pass = isPos ? '各模块均须合格' : (p.pass + ' 分');
           var scope = isPos ? esc(p.position || '—') : esc((p.banks || []).map(function (id) { var m = L.Bank.meta('daily', id); return m ? m.name : '(已删除)'; }).join('、') || '—');
           return '<tr><td><b>' + esc(p.name) + '</b>' + (isPos ? '<div style="font-size:11.5px;color:var(--ink-400)">岗位方案</div>' : '') + '</td>' +
             '<td style="font-size:12.5px">' + ratio + '</td>' +
